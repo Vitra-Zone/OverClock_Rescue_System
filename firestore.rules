@@ -1,0 +1,32 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    // Guest can create incidents; any signed-in staff can read/update.
+    // For hackathon speed, staff role is based on sign-in state.
+    // Later: add custom claims (request.auth.token.role == 'staff').
+    match /incidents/{incidentId} {
+      allow create: if true;
+      allow read: if isSignedIn();
+      allow update: if isSignedIn();
+      allow delete: if false;
+    }
+
+    // Optional collection for runtime triage tuning.
+    match /triageRules/{ruleId} {
+      allow read, write: if isSignedIn();
+    }
+
+    // Optional collection for notification token metadata.
+    match /staffTokens/{tokenId} {
+      allow read, write: if isSignedIn();
+    }
+
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

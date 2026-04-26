@@ -1,0 +1,18 @@
+# Dependencies
+**/node_modules/
+
+# Build artifacts
+**/dist/
+**/dist-ssr/
+
+# Environment files (never commit secrets)
+backend/.env
+frontend/.env
+
+# Logs
+**/*.log
+
+# OS / Editor
+.DS_Store
+.vscode/
+.idea/
