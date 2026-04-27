@@ -1,4 +1,5 @@
 import { AITriageResult, IncidentType, Severity, AssignedRole, FallbackMode, Incident } from '../types/incident';
+import type { TouristProfile } from '../types/tourist';
 import { getFirestore, isFirebaseEnabled } from './firebaseAdmin';
 import { getAllIncidents } from './incidentStore';
 
@@ -510,6 +511,69 @@ export async function orchestrateAgent(
     shouldEscalate,
     draftMessage,
     recommendClose,
+  };
+}
+
+export interface TouristGuidanceReply {
+  reply: string;
+  actionItems: string[];
+  mode: 'gemini' | 'rule_based';
+}
+
+function buildTouristGuidanceFallback(
+  message: string,
+  profile?: TouristProfile | null,
+  incidentContext?: { incidentType?: string; severity?: string; location?: string; status?: string }
+): TouristGuidanceReply {
+  const lower = message.toLowerCase();
+  const urgent = lower.includes('fire') || lower.includes('blood') || lower.includes('unconscious') || lower.includes('danger');
+  const title = profile?.touristFirstName ? `${profile.touristFirstName}, ` : '';
+  const incidentBits = incidentContext?.incidentType ? ` for a ${incidentContext.incidentType} incident` : '';
+
+  return {
+    reply: urgent
+      ? `${title}move to safety immediately${incidentBits}. Stay calm, alert hotel staff, and keep your phone ready.`
+      : `${title}here is the safest next step${incidentBits}: keep calm, follow the hotel guidance, and share one clear detail at a time.`,
+    actionItems: urgent
+      ? ['Move away from danger', 'Call hotel staff or emergency services', 'Share your exact location']
+      : ['State the problem in one line', 'Keep the app open for updates', 'Use SOS if the situation changes'],
+    mode: 'rule_based',
+  };
+}
+
+export async function generateTouristGuidanceReply(
+  message: string,
+  profile?: TouristProfile | null,
+  incidentContext?: { incidentType?: string; severity?: string; location?: string; status?: string }
+): Promise<TouristGuidanceReply> {
+  const fallback = buildTouristGuidanceFallback(message, profile, incidentContext);
+
+  if (!geminiEnabled) {
+    return fallback;
+  }
+
+  const prompt = [
+    'You are a calm, concise tourist emergency assistant for a hotel rescue system.',
+    'Return STRICT JSON with keys: reply, actionItems.',
+    'Reply should be short, practical, and reassuring.',
+    'Action items should be an array of 2 to 4 short imperative sentences.',
+    `Tourist profile: ${JSON.stringify(profile ?? null)}`,
+    `Incident context: ${JSON.stringify(incidentContext ?? null)}`,
+    `Tourist message: ${message}`,
+  ].join('\n');
+
+  const ai = await callGemini(prompt);
+  if (!ai) return fallback;
+
+  const reply = typeof ai.reply === 'string' && ai.reply.trim() ? ai.reply.trim() : fallback.reply;
+  const actionItems = Array.isArray(ai.actionItems) && ai.actionItems.every((item) => typeof item === 'string')
+    ? ai.actionItems.map((item) => item.trim()).filter(Boolean).slice(0, 4)
+    : fallback.actionItems;
+
+  return {
+    reply,
+    actionItems,
+    mode: 'gemini',
   };
 }
 

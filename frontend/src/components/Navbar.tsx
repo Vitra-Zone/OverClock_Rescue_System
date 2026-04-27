@@ -1,9 +1,10 @@
 import React from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { Shield, LayoutDashboard, AlertTriangle, BookOpen, Radio, UserRound, UsersRound, Bot, MapPinned, LogOut } from 'lucide-react';
+import { Shield, LayoutDashboard, AlertTriangle, BookOpen, Radio, UserRound, UsersRound, Bot, MapPinned, LogOut, UserCog, Menu } from 'lucide-react';
 import type { ConnectivityMode } from '../types/incident';
 import { ConnectivityBadge } from './ConnectivityBadge';
 import { useAuth } from '../auth/AuthContext';
+import { useTouristAuth } from '../auth/TouristAuthContext';
 
 interface Props {
   connectivity: ConnectivityMode;
@@ -26,44 +27,36 @@ const NAV_ITEMS = [
 export function Navbar({ connectivity, onModeChange }: Props) {
   const navigate = useNavigate();
   const { pathname } = useLocation();
-  const { user, enabled, logout } = useAuth();
-  const isMinimalHeader = true;
+  const [touristMenuOpen, setTouristMenuOpen] = React.useState(false);
+  const { user, enabled, logout: logoutStaff } = useAuth();
+  const { user: touristUser, logout: logoutTourist, profile: touristProfile } = useTouristAuth();
   const navbarConnectivity: ConnectivityMode = connectivity === 'offline' ? 'offline' : 'online';
   
   const isManagementRoute = pathname.startsWith('/staff') || pathname.startsWith('/dashboard') || pathname.startsWith('/agent');
-  const showConnectivity = !isManagementRoute && pathname !== '/';
+  const isTouristRoute = pathname === '/' || pathname.startsWith('/tourist') || pathname.startsWith('/guest') || pathname.startsWith('/sos') || pathname.startsWith('/offline') || pathname.startsWith('/live-guidance') || pathname.startsWith('/fallback') || pathname.startsWith('/profile') || pathname.startsWith('/post-sos');
+  const showConnectivity = isTouristRoute;
+  const showTouristActions = isTouristRoute && pathname !== '/' && !pathname.startsWith('/post-sos') && Boolean(touristUser);
+  const showTouristEdit = showTouristActions && Boolean(touristProfile);
+  const showStaffLogout = isManagementRoute && enabled;
+  const showTouristLogout = showTouristActions;
+
+  React.useEffect(() => {
+    setTouristMenuOpen(false);
+  }, [pathname]);
 
   return (
     <header className="sticky top-0 z-50 bg-crisis-surface/80 backdrop-blur-md border-b border-crisis-border">
       <div className="max-w-6xl mx-auto px-4 h-14 flex items-center justify-between gap-4 relative">
-        {/* Logo */}
-        {!isMinimalHeader ? (
-          <button
-            onClick={() => navigate('/')}
-            className="flex items-center gap-2 shrink-0"
-          >
+        <div className="flex items-center gap-2 min-w-0">
+          <button onClick={() => navigate('/?chooser=1')} className="flex items-center gap-2 shrink-0">
             <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-crisis-primary to-crisis-accent flex items-center justify-center">
               <Shield size={16} className="text-white" />
             </div>
-            <span className="font-bold text-crisis-text text-sm hidden sm:block">Hackdays</span>
+            <span className="font-bold text-crisis-text text-sm">Hackdays</span>
           </button>
-        ) : (
-          <div className="w-28" aria-hidden="true" />
-        )}
+        </div>
 
-        {isMinimalHeader && (
-          <button
-            onClick={() => navigate('/')}
-            className="absolute left-1/2 -translate-x-1/2 flex items-center gap-2"
-          >
-            <div className="w-9 h-9 rounded-lg bg-gradient-to-br from-crisis-primary to-crisis-accent flex items-center justify-center">
-              <Shield size={17} className="text-white" />
-            </div>
-            <span className="font-bold text-crisis-text text-lg">Hackdays</span>
-          </button>
-        )}
-
-        {!isMinimalHeader && (
+        {!isManagementRoute && !isTouristRoute && (
           <nav className="flex items-center gap-0.5">
             {NAV_ITEMS.map(({ path, label, icon }) => {
               const active = pathname === path || (path !== '/' && pathname.startsWith(path));
@@ -86,44 +79,79 @@ export function Navbar({ connectivity, onModeChange }: Props) {
           </nav>
         )}
 
-        {/* Connectivity - only on guest side */}
-        {showConnectivity && (
-          <ConnectivityBadge
-            mode={navbarConnectivity}
-            onModeChange={onModeChange}
-            showToggle={false}
-          />
+        {isTouristRoute && pathname !== '/' && !pathname.startsWith('/post-sos') ? (
+          <div className="flex items-center gap-2">
+            {showConnectivity && (
+              <ConnectivityBadge
+                mode={navbarConnectivity}
+                onModeChange={pathname === '/fallback' ? onModeChange : undefined}
+                showToggle={false}
+              />
+            )}
+            {showTouristActions ? (
+              <div className="relative">
+                <button
+                  onClick={() => setTouristMenuOpen((prev) => !prev)}
+                  className="btn-ghost inline-flex items-center justify-center"
+                  aria-label="Open tourist menu"
+                >
+                  <Menu size={16} />
+                </button>
+                {touristMenuOpen ? (
+                  <div className="absolute right-0 top-10 w-44 rounded-xl border border-crisis-border bg-crisis-surface shadow-lg p-1 z-[80]">
+                    {showTouristEdit ? (
+                      <button
+                        onClick={() => {
+                          setTouristMenuOpen(false);
+                          navigate('/profile');
+                        }}
+                        className="w-full rounded-lg px-3 py-2 text-left text-xs text-crisis-text hover:bg-white/5 inline-flex items-center gap-2"
+                      >
+                        <UserCog size={14} /> Edit profile
+                      </button>
+                    ) : null}
+                    {showTouristLogout ? (
+                      <button
+                        onClick={async () => {
+                          setTouristMenuOpen(false);
+                          await logoutTourist();
+                          navigate('/');
+                        }}
+                        className="w-full rounded-lg px-3 py-2 text-left text-xs text-crisis-text hover:bg-white/5 inline-flex items-center gap-2"
+                      >
+                        <LogOut size={14} /> Logout
+                      </button>
+                    ) : null}
+                  </div>
+                ) : null}
+              </div>
+            ) : null}
+          </div>
+        ) : isManagementRoute ? null : (
+          <div className="flex items-center gap-2">
+            {showConnectivity && (
+              <ConnectivityBadge
+                mode={navbarConnectivity}
+                onModeChange={pathname === '/fallback' ? onModeChange : undefined}
+                showToggle={false}
+              />
+            )}
+            {!user ? (
+              <button onClick={() => navigate('/staff-login')} className="btn-ghost text-xs">Staff Login</button>
+            ) : null}
+          </div>
         )}
 
-        {/* Logout - only on management side */}
-        {isManagementRoute && enabled && (
+        {showStaffLogout && (
           <button
             onClick={async () => {
-              await logout();
+              await logoutStaff();
               navigate('/');
             }}
             className="btn-ghost text-xs inline-flex items-center gap-1"
           >
             <LogOut size={14} /> Logout
           </button>
-        )}
-
-        {!isMinimalHeader && enabled && (
-          user ? (
-            <button
-              onClick={async () => {
-                await logout();
-                navigate('/');
-              }}
-              className="btn-ghost text-xs"
-            >
-              Logout
-            </button>
-          ) : (
-            <button onClick={() => navigate('/staff-login')} className="btn-ghost text-xs">
-              Staff Login
-            </button>
-          )
         )}
       </div>
     </header>

@@ -21,6 +21,7 @@ import {
 import { requireStaffAuth } from '../middleware/auth';
 import { scheduleEscalation, clearEscalationForIncident } from '../services/escalationService';
 import { sendStaffIncidentAlert } from '../services/notificationService';
+import { sendTouristSupportAlert } from '../services/notificationService';
 
 const router = Router();
 
@@ -167,6 +168,38 @@ router.post('/:id/hotel-close', requireStaffAuth, async (req: Request, res: Resp
 
   console.log(`[Incidents] POST /${req.params.id}/hotel-close`);
   res.json({ success: true, data: incident, timestamp: new Date().toISOString() });
+});
+
+// POST /api/incidents/:id/contact-request
+router.post('/:id/contact-request', requireStaffAuth, async (req: Request, res: Response) => {
+  const { mode, contactNumber, note } = req.body as { mode?: 'voice' | 'video'; contactNumber?: string; note?: string };
+  if (!mode) {
+    return res.status(400).json({ success: false, error: 'Missing mode field', timestamp: new Date().toISOString() });
+  }
+
+  const incident = await getIncidentById(req.params.id);
+  if (!incident) {
+    return res.status(404).json({ success: false, error: 'Incident not found', timestamp: new Date().toISOString() });
+  }
+
+  await addTimelineEntry(req.params.id, {
+    actor: 'system',
+    message: note ?? (mode === 'video'
+      ? 'Tourist requested video connection with management.'
+      : `Tourist requested voice contact${contactNumber ? ` to ${contactNumber}` : ''}.`),
+  });
+
+  await sendTouristSupportAlert(
+    mode === 'video' ? 'Tourist video request' : 'Tourist voice request',
+    `${mode === 'video' ? 'Video' : 'Voice'} contact requested for incident ${incident.id}.`,
+    incident.id
+  );
+
+  return res.json({
+    success: true,
+    data: { notified: true, mode, contactNumber: contactNumber ?? '' },
+    timestamp: new Date().toISOString(),
+  });
 });
 
 export default router;

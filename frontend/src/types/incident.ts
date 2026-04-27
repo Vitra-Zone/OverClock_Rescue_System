@@ -55,6 +55,16 @@ export interface HotelContext {
   coordinates?: Coordinates;
 }
 
+export interface TouristHotelBinding {
+  hotelName: string;
+  hotelLocation: string;
+  roomNumber: string;
+  nightsOfStay: number;
+  hotelPhoneNumber?: string;
+  qrPayload?: string;
+  sharedAt?: string;
+}
+
 export interface AITriageResult {
   incidentType: IncidentType;
   severity: Severity;
@@ -120,6 +130,9 @@ export interface CreateIncidentRequest {
   coordinates?: Coordinates;
   incidentScope?: 'in_hotel' | 'outside';
   hotelContext?: HotelContext;
+  touristProfileId?: string;
+  touristDigitalId?: string;
+  touristHotelBinding?: TouristHotelBinding;
   message: string;
   connectivityMode: ConnectivityMode;
   source?: 'web' | 'sms' | 'voice' | 'staff';

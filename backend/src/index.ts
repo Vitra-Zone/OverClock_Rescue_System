@@ -5,6 +5,7 @@ import incidentRoutes from './routes/incidents';
 import aiRoutes from './routes/ai';
 import fallbackRoutes from './routes/fallback';
 import notificationRoutes from './routes/notifications';
+import touristRoutes from './routes/tourists';
 import { isFirebaseEnabled } from './services/firebaseAdmin';
 
 const app = express();
@@ -83,6 +84,7 @@ app.use('/api/incidents', incidentRoutes);
 app.use('/api/ai', aiRoutes);
 app.use('/api/fallback', fallbackRoutes);
 app.use('/api/notifications', notificationRoutes);
+app.use('/api/tourists', touristRoutes);
 
 // ─── 404 handler ───────────────────────────────────────────────────────────────
 app.use((_req, res) => {

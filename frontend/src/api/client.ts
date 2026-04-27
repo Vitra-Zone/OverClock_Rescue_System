@@ -8,6 +8,13 @@ import type {
   FallbackMode,
   ResponseSector,
 } from '../types/incident';
+import type {
+  TouristProfile,
+  TouristChatResponse,
+  ContactRequest,
+  RegisterTouristRequest,
+  UpdateTouristProfileRequest,
+} from '../types/tourist';
 
 const backendUrl = import.meta.env.VITE_BACKEND_URL?.trim() ?? '';
 const apiBaseUrl = backendUrl ? `${backendUrl.replace(/\/$/, '')}/api` : '/api';
@@ -19,16 +26,24 @@ const api = axios.create({
   timeout: 10000,
 });
 
-let staffAuthToken: string | null = null;
+let authToken: string | null = null;
 
 export function setStaffAuthToken(token: string | null) {
-  staffAuthToken = token;
+  authToken = token;
+}
+
+export function setTouristAuthToken(token: string | null) {
+  authToken = token;
+}
+
+export function clearAuthToken() {
+  authToken = null;
 }
 
 api.interceptors.request.use((config) => {
-  if (staffAuthToken) {
+  if (authToken) {
     config.headers = config.headers ?? {};
-    config.headers.Authorization = `Bearer ${staffAuthToken}`;
+    config.headers.Authorization = `Bearer ${authToken}`;
   }
   return config;
 });
@@ -36,6 +51,11 @@ api.interceptors.request.use((config) => {
 // ─── Incidents ─────────────────────────────────────────────────────────────────
 export async function fetchIncidents(): Promise<Incident[]> {
   const res = await api.get<APIResponse<Incident[]>>('/incidents');
+  return res.data.data ?? [];
+}
+
+export async function fetchTouristIncidents(): Promise<Incident[]> {
+  const res = await api.get<APIResponse<Incident[]>>('/tourists/me/incidents');
   return res.data.data ?? [];
 }
 
@@ -129,6 +149,59 @@ export async function triggerFallback(
 export async function registerNotificationToken(token: string) {
   const res = await api.post('/notifications/register-token', { token });
   return res.data.data;
+}
+
+// ─── Tourist ─────────────────────────────────────────────────────────────────
+export async function fetchTouristProfile(): Promise<TouristProfile | null> {
+  try {
+    const res = await api.get<APIResponse<TouristProfile>>('/tourists/me');
+    return res.data.data ?? null;
+  } catch {
+    return null;
+  }
+}
+
+export async function registerTouristProfile(req: RegisterTouristRequest): Promise<TouristProfile> {
+  const res = await api.post<APIResponse<TouristProfile>>('/tourists/register', req);
+  return res.data.data!;
+}
+
+export async function updateTouristProfile(req: UpdateTouristProfileRequest): Promise<TouristProfile> {
+  const res = await api.patch<APIResponse<TouristProfile>>('/tourists/me', req);
+  return res.data.data!;
+}
+
+export async function updateTouristLocation(coords: { lat: number; lng: number; accuracy?: number }, currentLocation: string) {
+  const res = await api.post<APIResponse<TouristProfile>>('/tourists/me/location', {
+    coordinates: coords,
+    currentLocation,
+  });
+  return res.data.data!;
+}
+
+export async function bindTouristHotel(req: {
+  hotelName: string;
+  hotelLocation: string;
+  roomNumber: string;
+  nightsOfStay: number;
+  hotelPhoneNumber?: string;
+  qrPayload?: string;
+}): Promise<TouristProfile> {
+  const res = await api.post<APIResponse<TouristProfile>>('/tourists/me/hotel-binding', req);
+  return res.data.data!;
+}
+
+export async function askTouristAssistant(message: string, incidentContext?: Record<string, unknown>): Promise<TouristChatResponse> {
+  const res = await api.post<APIResponse<TouristChatResponse>>('/tourists/me/chat', { message, incidentContext });
+  return res.data.data!;
+}
+
+export async function notifyTouristContact(req: ContactRequest) {
+  const res = await api.post<APIResponse<{ notified: boolean; mode: 'voice' | 'video'; contactNumber?: string }>>(
+    '/tourists/me/contact',
+    req
+  );
+  return res.data.data!;
 }
 
 // ─── Health ────────────────────────────────────────────────────────────────────

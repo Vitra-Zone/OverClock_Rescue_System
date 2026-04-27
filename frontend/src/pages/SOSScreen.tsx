@@ -4,6 +4,7 @@ import { MapPin, User, MessageSquare, ArrowLeft, CheckCircle, AlertTriangle } fr
 import type { ConnectivityMode, Incident, Coordinates } from '../types/incident';
 import { SOSButton } from '../components/SOSButton';
 import { createIncident, runAITriage, triggerFallback } from '../api/client';
+import { useTouristAuth } from '../auth/TouristAuthContext';
 
 interface Props {
   connectivity: ConnectivityMode;
@@ -42,6 +43,7 @@ const OTHER_EMERGENCY_TYPES = ['Theft', 'Murder', 'Assault', 'Harassment', 'Susp
 
 export function SOSScreen({ connectivity, showBackButton = true, afterSubmitFlow = 'incident' }: Props) {
   const navigate = useNavigate();
+  const { profile } = useTouristAuth();
   const [step, setStep] = useState<Step>('form');
   const [incident, setIncident] = useState<Incident | null>(null);
   const [liveVideoUrl, setLiveVideoUrl] = useState<string | null>(null);
@@ -59,6 +61,7 @@ export function SOSScreen({ connectivity, showBackButton = true, afterSubmitFlow
   const [boundHotelContext, setBoundHotelContext] = useState(DEFAULT_BOUND_HOTEL_CONTEXT);
   const [locating, setLocating] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const hasHotelBinding = Boolean(profile?.hotelBinding);
 
   useEffect(() => {
     if (afterSubmitFlow !== 'guides-map') return;
@@ -121,6 +124,26 @@ export function SOSScreen({ connectivity, showBackButton = true, afterSubmitFlow
       window.sessionStorage.removeItem(GUEST_QR_PREFILL_STORAGE_KEY);
     }
   }, []);
+
+  useEffect(() => {
+    if (!profile) return;
+
+    setForm((current) => ({
+      ...current,
+      guestName: `${profile.touristFirstName} ${profile.touristLastName}`.trim() || current.guestName,
+      roomNumber: profile.hotelBinding?.roomNumber ?? current.roomNumber,
+      hotelLocation: profile.hotelBinding?.hotelLocation ?? current.hotelLocation,
+      locationMode: 'hotel',
+    }));
+
+    if (profile.hotelBinding?.hotelName && profile.hotelBinding.hotelLocation) {
+      setBoundHotelContext({
+        name: profile.hotelBinding.hotelName,
+        address: profile.hotelBinding.hotelLocation,
+        coordinates: profile.coordinates ?? DEFAULT_BOUND_HOTEL_CONTEXT.coordinates,
+      });
+    }
+  }, [profile]);
 
   const resetForNewReport = () => {
     window.sessionStorage.removeItem(GUEST_SUCCESS_STORAGE_KEY);
@@ -188,9 +211,11 @@ export function SOSScreen({ connectivity, showBackButton = true, afterSubmitFlow
     }
 
     const location = isHotelMode
-      ? form.hotelLocation === 'Room'
-        ? `Room ${form.roomNumber.trim() || 'Unknown'}`
-        : form.hotelLocation
+      ? hasHotelBinding && profile?.hotelBinding
+        ? `${profile.hotelBinding.hotelLocation}, Room ${profile.hotelBinding.roomNumber}`
+        : form.hotelLocation === 'Room'
+          ? `Room ${form.roomNumber.trim() || 'Unknown'}`
+          : form.hotelLocation
       : form.otherLocation.trim();
 
     const message = `Emergency Type: ${form.emergencyType}. ${form.details.trim() || 'No additional details provided.'}`;
@@ -207,7 +232,11 @@ export function SOSScreen({ connectivity, showBackButton = true, afterSubmitFlow
       // Create incident
       const created = await createIncident({
         guestName: form.guestName,
-        roomNumber: isHotelMode && form.roomNumber.trim() ? form.roomNumber.trim() : 'Unknown',
+        roomNumber: hasHotelBinding && profile?.hotelBinding
+          ? profile.hotelBinding.roomNumber
+          : isHotelMode && form.roomNumber.trim()
+            ? form.roomNumber.trim()
+            : 'Unknown',
         location,
         coordinates,
         incidentScope: isHotelMode ? 'in_hotel' : 'outside',
@@ -215,6 +244,9 @@ export function SOSScreen({ connectivity, showBackButton = true, afterSubmitFlow
         message,
         connectivityMode: connectivity,
         source: 'web',
+        touristProfileId: profile?.uid,
+        touristDigitalId: profile?.digitalId,
+        touristHotelBinding: profile?.hotelBinding,
       });
       setIncident(created);
 
@@ -259,7 +291,8 @@ export function SOSScreen({ connectivity, showBackButton = true, afterSubmitFlow
         );
       }
 
-      setStep('success');
+      window.sessionStorage.setItem('hackdays_tourist_last_incident', JSON.stringify({ incidentId: created.id }));
+      navigate(`/post-sos/${created.id}`, { replace: true });
     } catch (err: unknown) {
       console.error(err);
       // If backend is down, simulate offline mode
@@ -422,30 +455,39 @@ export function SOSScreen({ connectivity, showBackButton = true, afterSubmitFlow
             />
           </div>
 
-          <div>
-            <label className="form-label" htmlFor="sos-location-mode">Location Type *</label>
-            <select
-              id="sos-location-mode"
-              className="form-input"
-              value={form.locationMode}
-              onChange={(e) => {
-                const nextMode = e.target.value;
-                setForm((f) => ({
-                  ...f,
-                  locationMode: nextMode,
-                  emergencyType: nextMode === 'hotel' ? HOTEL_EMERGENCY_TYPES[0] : OTHER_EMERGENCY_TYPES[0],
-                }));
-                if (nextMode === 'other') {
-                  void Promise.resolve().then(() => useCurrentLocation());
-                }
-              }}
-            >
-              <option value="hotel">Hotel</option>
-              <option value="other">Other</option>
-            </select>
-          </div>
+          {!hasHotelBinding && (
+            <div>
+              <label className="form-label" htmlFor="sos-location-mode">Location Type *</label>
+              <select
+                id="sos-location-mode"
+                className="form-input"
+                value={form.locationMode}
+                onChange={(e) => {
+                  const nextMode = e.target.value;
+                  setForm((f) => ({
+                    ...f,
+                    locationMode: nextMode,
+                    emergencyType: nextMode === 'hotel' ? HOTEL_EMERGENCY_TYPES[0] : OTHER_EMERGENCY_TYPES[0],
+                  }));
+                  if (nextMode === 'other') {
+                    void Promise.resolve().then(() => useCurrentLocation());
+                  }
+                }}
+              >
+                <option value="hotel">Hotel</option>
+                <option value="other">Other</option>
+              </select>
+            </div>
+          )}
 
-          {form.locationMode === 'hotel' ? (
+          {hasHotelBinding ? (
+            <div className="rounded-2xl border border-emerald-700/35 bg-emerald-950/20 p-4 text-sm text-emerald-100 space-y-2">
+              <p className="font-semibold text-emerald-300">Hotel details captured automatically</p>
+              <p>Room: {profile?.hotelBinding?.roomNumber}</p>
+              <p>Location: {profile?.hotelBinding?.hotelLocation}</p>
+              <p className="text-emerald-200/70">These values are shared with the incident record but are hidden from the form.</p>
+            </div>
+          ) : form.locationMode === 'hotel' ? (
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <label className="form-label" htmlFor="sos-hotel-location">Location *</label>

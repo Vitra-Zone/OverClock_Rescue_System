@@ -33,3 +33,7 @@ export async function sendStaffIncidentAlert(title: string, body: string, incide
     console.warn('[Notifications] Failed to send push notification.', error);
   }
 }
+
+export async function sendTouristSupportAlert(title: string, body: string, incidentId: string) {
+  await sendStaffIncidentAlert(title, body, incidentId);
+}
