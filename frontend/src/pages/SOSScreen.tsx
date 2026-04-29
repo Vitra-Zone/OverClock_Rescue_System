@@ -86,6 +86,12 @@ function isValidSmsNumber(number: string) {
   return /^\+?\d{7,15}$/.test(normalizedNumber);
 }
 
+function normalizeSmsNumber(number: string | undefined) {
+  if (!number) return '';
+  const normalizedNumber = number.trim().replace(/[^+\d]/g, '');
+  return isValidSmsNumber(normalizedNumber) ? normalizedNumber : '';
+}
+
 export function SOSScreen({ connectivity, showBackButton = true, afterSubmitFlow = 'incident' }: Props) {
   const navigate = useNavigate();
   const { profile, loading: touristAuthLoading } = useTouristAuth();
@@ -109,7 +115,7 @@ export function SOSScreen({ connectivity, showBackButton = true, afterSubmitFlow
   const [locating, setLocating] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const hasHotelBinding = Boolean(profile?.hotelBinding);
-  const smsRecipientNumber = profile?.hotelBinding?.hotelPhoneNumber?.trim() || DEFAULT_SMS_NUMBER;
+  const smsRecipientNumber = normalizeSmsNumber(profile?.hotelBinding?.hotelPhoneNumber) || DEFAULT_SMS_NUMBER;
   const canOpenSmsApp = isValidSmsNumber(smsRecipientNumber);
 
   const smsFallbackPayload = useMemo(() => buildSmsFallbackPayload({

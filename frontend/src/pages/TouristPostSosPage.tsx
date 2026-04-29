@@ -11,6 +11,12 @@ import { TouristChatBox } from '../components/TouristChatBox';
 const LAST_INCIDENT_KEY = 'hackdays_tourist_last_incident';
 const LAST_INCIDENT_SNAPSHOT_KEY = 'hackdays_tourist_last_incident_snapshot';
 
+function normalizePhoneNumber(value: string | undefined): string | undefined {
+  if (!value) return undefined;
+  const normalized = value.trim().replace(/[^+\d]/g, '');
+  return /^\+?\d{7,15}$/.test(normalized) ? normalized : undefined;
+}
+
 function storeIncidentId(incident: Incident) {
   try {
     window.localStorage.setItem(LAST_INCIDENT_KEY, JSON.stringify({ incidentId: incident.id }));
@@ -131,7 +137,7 @@ export function TouristPostSosPage() {
     );
   }
 
-  const callNumber = profile?.hotelBinding?.hotelPhoneNumber ?? '+911120000000';
+  const callNumber = normalizePhoneNumber(profile?.hotelBinding?.hotelPhoneNumber) ?? import.meta.env.VITE_TWILIO_SMS_NUMBER?.trim() ?? '+911120000000';
 
   return (
     <>

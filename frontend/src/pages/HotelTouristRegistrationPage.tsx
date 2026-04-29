@@ -21,6 +21,12 @@ function calculateNights(startDate: string, endDate: string): number | null {
   return Math.max(1, Math.floor((end - start) / (1000 * 60 * 60 * 24)));
 }
 
+function normalizePhoneNumber(value: string | undefined): string {
+  if (!value) return '';
+  const normalized = value.trim().replace(/[^+\d]/g, '');
+  return /^\+?\d{7,15}$/.test(normalized) ? normalized : '';
+}
+
 export function HotelTouristRegistrationPage() {
   const navigate = useNavigate();
   const role = useMemo(() => parseRole(window.sessionStorage.getItem(MANAGEMENT_ROLE_KEY)), []);
@@ -35,7 +41,7 @@ export function HotelTouristRegistrationPage() {
 
   const hotelName = (import.meta.env.VITE_HOTEL_NAME?.trim() ?? 'OverClock Tower');
   const hotelLocation = (import.meta.env.VITE_HOTEL_LOCATION?.trim() ?? 'Assam, Guwahati');
-  const hotelPhoneNumber = (import.meta.env.VITE_HOTEL_PHONE?.trim() ?? '+91-XXXXXXXXXX');
+  const hotelPhoneNumber = normalizePhoneNumber(import.meta.env.VITE_TWILIO_SMS_NUMBER?.trim());
   const nightsOfStay = calculateNights(startDate, endDate);
 
   const loadLinkedTourists = async () => {
