@@ -1,0 +1,48 @@
+{
+  "name": "tourist-mobile",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc && vite build",
+    "preview": "vite preview",
+    "cap": "capacitor",
+    "android:open": "capacitor open android",
+    "ios:open": "capacitor open ios",
+    "build:android": "npm run build && capacitor copy && capacitor build android",
+    "build:ios": "npm run build && capacitor copy && capacitor build ios"
+  },
+  "devDependencies": {
+    "@capacitor/cli": "latest",
+    "@types/leaflet": "^1.9.21",
+    "@types/node": "^24.3.0",
+    "@types/react": "^19.2.2",
+    "@types/react-dom": "^19.2.2",
+    "autoprefixer": "^10.4.21",
+    "postcss": "^8.5.6",
+    "tailwindcss": "^3.4.17",
+    "typescript": "~6.0.2",
+    "vite": "^8.0.4"
+  },
+  "dependencies": {
+    "@capacitor/android": "^8.3.1",
+    "@capacitor/app": "latest",
+    "@capacitor/core": "latest",
+    "@capacitor/geolocation": "latest",
+    "@capacitor/keyboard": "latest",
+    "@capacitor/network": "latest",
+    "@overclock/shared": "file:../packages/shared",
+    "@types/qrcode": "^1.5.6",
+    "@vitejs/plugin-react": "^6.0.1",
+    "axios": "^1.15.0",
+    "firebase": "^11.10.0",
+    "leaflet": "^1.9.4",
+    "lucide-react": "^1.8.0",
+    "qrcode": "^1.5.4",
+    "react": "^19.2.5",
+    "react-dom": "^19.2.5",
+    "react-leaflet": "^5.0.0",
+    "react-router-dom": "^7.14.0"
+  }
+}

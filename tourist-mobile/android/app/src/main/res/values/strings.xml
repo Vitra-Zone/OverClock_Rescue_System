@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">OverClock Rescue - Tourist</string>
+    <string name="title_activity_main">OverClock Rescue - Tourist</string>
+    <string name="package_name">com.overclock.rescue.tourist</string>
+    <string name="custom_url_scheme">com.overclock.rescue.tourist</string>
+</resources>
