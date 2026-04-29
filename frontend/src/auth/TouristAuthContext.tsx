@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useEffect, useMemo, useState } from 'react';
-import { User, createUserWithEmailAndPassword, fetchSignInMethodsForEmail, onAuthStateChanged, signInWithEmailAndPassword, signOut } from 'firebase/auth';
+import { User, createUserWithEmailAndPassword, onAuthStateChanged, signInWithEmailAndPassword, signOut } from 'firebase/auth';
 import { firebaseAuth, firebaseEnabled } from '../firebase/client';
 import { clearTouristAuthToken, setTouristAuthToken, fetchTouristProfile, registerTouristProfile as saveTouristProfile } from '../api/client';
 import type { TouristProfile, RegisterTouristRequest } from '../types/tourist';
@@ -72,13 +72,6 @@ export function TouristAuthProvider({ children }: { children: React.ReactNode })
     login: async (email: string, password: string) => {
       if (!firebaseAuth) throw new Error('Firebase Auth not configured.');
       const normalizedEmail = email.trim();
-      const signInMethods = await fetchSignInMethodsForEmail(firebaseAuth, normalizedEmail);
-      if (signInMethods.length === 0) {
-        const error = new Error('No tourist account found for this email. Please register first.') as Error & { code?: string };
-        error.code = 'auth/user-not-found';
-        throw error;
-      }
-
       const credential = await signInWithEmailAndPassword(firebaseAuth, normalizedEmail, password);
       if (await isManagementUser(credential.user)) {
         await signOut(firebaseAuth);
