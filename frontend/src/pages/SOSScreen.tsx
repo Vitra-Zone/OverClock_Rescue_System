@@ -40,7 +40,7 @@ const HOTEL_LOCATIONS = [
 
 const HOTEL_EMERGENCY_TYPES = ['Fire', 'Health', 'Medical', 'Electrical', 'Security Threat', 'Anything Else'];
 const OTHER_EMERGENCY_TYPES = ['Theft', 'Murder', 'Assault', 'Harassment', 'Suspicious Activity', 'Other'];
-const DEFAULT_SMS_NUMBER = import.meta.env.VITE_TWILIO_SMS_NUMBER?.trim() ?? '+91XXXXXXXXXX';
+const DEFAULT_SMS_NUMBER = import.meta.env.VITE_TWILIO_SMS_NUMBER?.trim() ?? '';
 
 function compactSmsValue(value: string) {
   return value.replace(/[|]/g, '/').replace(/\s+/g, ' ').trim();
@@ -81,6 +81,11 @@ function buildSmsUri(number: string, body: string) {
   return `sms:${normalizedNumber}?body=${encodeURIComponent(body)}`;
 }
 
+function isValidSmsNumber(number: string) {
+  const normalizedNumber = number.replace(/[^+\d]/g, '');
+  return /^\+?\d{7,15}$/.test(normalizedNumber);
+}
+
 export function SOSScreen({ connectivity, showBackButton = true, afterSubmitFlow = 'incident' }: Props) {
   const navigate = useNavigate();
   const { profile, loading: touristAuthLoading } = useTouristAuth();
@@ -104,7 +109,8 @@ export function SOSScreen({ connectivity, showBackButton = true, afterSubmitFlow
   const [locating, setLocating] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const hasHotelBinding = Boolean(profile?.hotelBinding);
-  const smsRecipientNumber = profile?.hotelBinding?.hotelPhoneNumber ?? DEFAULT_SMS_NUMBER;
+  const smsRecipientNumber = profile?.hotelBinding?.hotelPhoneNumber?.trim() || DEFAULT_SMS_NUMBER;
+  const canOpenSmsApp = isValidSmsNumber(smsRecipientNumber);
 
   const smsFallbackPayload = useMemo(() => buildSmsFallbackPayload({
     guestName: form.guestName || profile?.touristFirstName || 'Guest',
@@ -459,8 +465,13 @@ export function SOSScreen({ connectivity, showBackButton = true, afterSubmitFlow
                       setSmsError('Generate the SMS message first.');
                       return;
                     }
+                    if (!canOpenSmsApp) {
+                      setSmsError('No SMS recipient is configured for this hotel. Add a valid hotel phone number or VITE_TWILIO_SMS_NUMBER.');
+                      return;
+                    }
                     window.location.href = buildSmsUri(smsRecipientNumber, payload);
                   }}
+                  disabled={!canOpenSmsApp}
                   className="btn-primary w-full"
                 >
                   Open messaging app
@@ -480,7 +491,12 @@ export function SOSScreen({ connectivity, showBackButton = true, afterSubmitFlow
                   Copy SMS text
                 </button>
               </div>
-              <p className="text-xs text-crisis-text-dim">To: {smsRecipientNumber}</p>
+              <p className="text-xs text-crisis-text-dim">To: {canOpenSmsApp ? smsRecipientNumber : 'Not configured'}</p>
+              {!canOpenSmsApp && (
+                <p className="text-xs text-amber-300">
+                  The hotel SMS number is missing or invalid, so the phone cannot prefill a recipient yet.
+                </p>
+              )}
               {smsError && <p className="text-xs text-amber-300">{smsError}</p>}
             </div>
             <div className="text-crisis-accent font-bold text-lg">📞 Emergency: 112</div>
