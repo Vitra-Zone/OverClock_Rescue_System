@@ -85,7 +85,7 @@ export function TouristPostSosPage() {
           <ShieldAlert size={40} className="text-crisis-primary mx-auto" />
           <h1 className="text-3xl font-black text-crisis-text">No SOS found</h1>
           <p className="text-crisis-text-dim">Submit a new SOS from your tourist dashboard to see the follow-up page here.</p>
-          <button onClick={() => navigate('/tourist')} className="btn-primary">Back to dashboard</button>
+          <button onClick={() => navigate('/tourist')} className="btn-primary">Back to tourist home</button>
         </div>
       </div>
     );

@@ -162,3 +162,55 @@ export async function bindTouristHotel(uid: string, binding: TouristHotelBinding
     },
   });
 }
+
+function normalizeKey(value: string | undefined): string {
+  return (value ?? '').trim().toLowerCase();
+}
+
+export async function listTouristsByHotelBinding(filters?: {
+  hotelName?: string;
+  hotelLocation?: string;
+  roomNumber?: string;
+}): Promise<TouristProfile[]> {
+  const hotelName = normalizeKey(filters?.hotelName);
+  const hotelLocation = normalizeKey(filters?.hotelLocation);
+  const roomNumber = normalizeKey(filters?.roomNumber);
+
+  const matches = (profile: TouristProfile) => {
+    const binding = profile.hotelBinding;
+    if (!binding) return false;
+
+    const nameMatches = !hotelName || normalizeKey(binding.hotelName) === hotelName;
+    const locationMatches = !hotelLocation || normalizeKey(binding.hotelLocation) === hotelLocation;
+    const roomMatches = !roomNumber || normalizeKey(binding.roomNumber) === roomNumber;
+
+    return nameMatches && locationMatches && roomMatches;
+  };
+
+  const profiles: TouristProfile[] = [];
+
+  if (isFirebaseEnabled()) {
+    const db = getFirestore();
+    if (!db) return [];
+    const snapshot = await db.collection(COLLECTION).get();
+    for (const doc of snapshot.docs) {
+      const profile = normalizeProfile(doc.data() as TouristProfile);
+      if (matches(profile)) {
+        profiles.push(profile);
+      }
+    }
+  } else {
+    for (const profile of memoryStore.values()) {
+      const normalized = normalizeProfile(profile);
+      if (matches(normalized)) {
+        profiles.push(normalized);
+      }
+    }
+  }
+
+  return profiles.sort((a, b) => {
+    const aTime = new Date(a.hotelBinding?.sharedAt ?? 0).getTime();
+    const bTime = new Date(b.hotelBinding?.sharedAt ?? 0).getTime();
+    return bTime - aTime;
+  });
+}

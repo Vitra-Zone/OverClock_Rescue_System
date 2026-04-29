@@ -1,6 +1,6 @@
 import { useEffect, useState, type FormEvent } from 'react';
-import { useLocation, useNavigate } from 'react-router-dom';
-import { ArrowRight, Shield, LogIn, UserPlus } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { Shield, LogIn, UserPlus } from 'lucide-react';
 import { useTouristAuth } from '../auth/TouristAuthContext';
 import { TouristProfileForm } from '../components/TouristProfileForm';
 import type { TouristProfileFormValues } from '../components/TouristProfileForm';
@@ -34,7 +34,6 @@ function getAuthErrorMessage(error: unknown, mode: 'login' | 'register'): string
 
 export function TouristHomePage() {
   const navigate = useNavigate();
-  const { search } = useLocation();
   const { user, profile, loading, enabled, login, register } = useTouristAuth();
   const [authMode, setAuthMode] = useState<'login' | 'register'>('login');
   const [loginEmail, setLoginEmail] = useState('');
@@ -45,12 +44,10 @@ export function TouristHomePage() {
   const [registerError, setRegisterError] = useState<string | null>(null);
 
   useEffect(() => {
-    const forceChooser = new URLSearchParams(search).get('chooser') === '1';
-    if (forceChooser) return;
     if (user && profile) {
       navigate('/tourist', { replace: true });
     }
-  }, [navigate, profile, search, user]);
+  }, [navigate, profile, user]);
 
   if (enabled && loading) {
     return <div className="min-h-screen flex items-center justify-center text-crisis-text">Checking tourist access...</div>;
@@ -125,9 +122,6 @@ export function TouristHomePage() {
                 Sign in with email and password, or register with your identity details so your digital card and hotel data stay connected.
               </p>
             </div>
-            <button onClick={() => navigate('/staff-login')} className="btn-secondary inline-flex items-center gap-2">
-              Staff portal <ArrowRight size={16} />
-            </button>
           </div>
         </section>
 

@@ -5,11 +5,12 @@ import { generateTouristGuidanceReply } from '../services/aiService';
 import {
   bindTouristHotel,
   getTouristProfileByUid,
+  listTouristsByHotelBinding,
   registerTouristProfile,
   updateTouristLocation,
   updateTouristProfile,
 } from '../services/touristStore';
-import { requireFirebaseAuth, AuthenticatedRequest } from '../middleware/auth';
+import { requireFirebaseAuth, requireStaffAuth, AuthenticatedRequest, StaffRequest } from '../middleware/auth';
 import type {
   ContactRequest,
   RegisterTouristRequest,
@@ -19,6 +20,34 @@ import type {
 } from '../types/tourist';
 
 const router = Router();
+
+router.get('/hotel-linked', requireStaffAuth, async (req: StaffRequest, res: Response) => {
+  const hotelName = String(req.query.hotelName ?? '').trim();
+  const hotelLocation = String(req.query.hotelLocation ?? '').trim();
+  const roomNumber = String(req.query.roomNumber ?? '').trim();
+
+  const profiles = await listTouristsByHotelBinding({
+    hotelName: hotelName || undefined,
+    hotelLocation: hotelLocation || undefined,
+    roomNumber: roomNumber || undefined,
+  });
+
+  const data = profiles.map((profile) => ({
+    uid: profile.uid,
+    email: profile.email,
+    touristFirstName: profile.touristFirstName,
+    touristLastName: profile.touristLastName,
+    phoneNumber: profile.phoneNumber,
+    digitalId: profile.digitalId,
+    currentLocation: profile.currentLocation ?? '',
+    coordinates: profile.coordinates,
+    hotelBinding: profile.hotelBinding,
+    createdAt: profile.createdAt,
+    updatedAt: profile.updatedAt,
+  }));
+
+  return res.json({ success: true, data, timestamp: new Date().toISOString() });
+});
 
 router.get('/me/incidents', requireFirebaseAuth, async (_req: AuthenticatedRequest, res: Response) => {
   const incidents = await getAllIncidents();
@@ -83,7 +112,16 @@ router.post('/me/location', requireFirebaseAuth, async (req: AuthenticatedReques
 });
 
 router.post('/me/hotel-binding', requireFirebaseAuth, async (req: AuthenticatedRequest, res: Response) => {
-  const body = req.body as { hotelName?: string; hotelLocation?: string; roomNumber?: string; nightsOfStay?: number; hotelPhoneNumber?: string; qrPayload?: string };
+  const body = req.body as {
+    hotelName?: string;
+    hotelLocation?: string;
+    roomNumber?: string;
+    nightsOfStay?: number;
+    stayStartDate?: string;
+    stayEndDate?: string;
+    hotelPhoneNumber?: string;
+    qrPayload?: string;
+  };
   if (!body.hotelName || !body.hotelLocation || !body.roomNumber || typeof body.nightsOfStay !== 'number') {
     return res.status(400).json({ success: false, error: 'Missing hotel binding fields', timestamp: new Date().toISOString() });
   }
@@ -93,6 +131,8 @@ router.post('/me/hotel-binding', requireFirebaseAuth, async (req: AuthenticatedR
     hotelLocation: body.hotelLocation,
     roomNumber: body.roomNumber,
     nightsOfStay: body.nightsOfStay,
+    stayStartDate: body.stayStartDate,
+    stayEndDate: body.stayEndDate,
     hotelPhoneNumber: body.hotelPhoneNumber,
     qrPayload: body.qrPayload,
   });

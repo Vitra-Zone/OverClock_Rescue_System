@@ -13,11 +13,74 @@ const COLLECTION = 'incidents';
 
 const memoryStore = new Map<string, Incident>();
 
+function hasFireSignal(message: string): boolean {
+  const lower = message.toLowerCase();
+  return ['fire', 'smoke', 'burn', 'flame', 'hot', 'smell', 'burning', 'alarm', 'electrical', 'short circuit', 'spark', 'gas leak']
+    .some((keyword) => lower.includes(keyword));
+}
+
+function buildFireWorkflowSteps(fallbackMode: AITriageResult['fallbackMode'], confidence: number): string[] {
+  const steps = [
+    'Guest input captured and normalized',
+    'Incident classified as fire with critical severity',
+    'Dispatch target resolved to fire_safety_officer',
+    'Recommended action: activate fire alarm and evacuate',
+  ];
+
+  if (fallbackMode !== 'none') {
+    steps.push(`Fallback channel prepared: ${fallbackMode}`);
+  }
+
+  steps.push(confidence >= 75 ? 'High-confidence triage ready for hotel-side review' : 'Low-confidence triage flagged for guest verification');
+  return steps;
+}
+
+function normalizeStoredTriage(incident: Incident): AITriageResult | undefined {
+  const triage = incident.aiTriage;
+  if (!triage) return triage;
+  if (!hasFireSignal(incident.message) || triage.incidentType === 'fire') return triage;
+
+  const confidence = Math.max(triage.confidence ?? 0, 92);
+  return {
+    ...triage,
+    incidentType: 'fire',
+    severity: 'critical',
+    assignedTo: 'fire_safety_officer',
+    nextAction: 'activate_fire_alarm_and_evacuate',
+    summary: `Critical-severity fire incident reported at ${incident.location}. "${incident.message.slice(0, 80)}${incident.message.length > 80 ? '...' : ''}"`,
+    followUpQuestion: 'Can you see open flames or is it just smoke?',
+    workflowStage: 'dispatch',
+    workflowSteps: buildFireWorkflowSteps(triage.fallbackMode, confidence),
+    confidence,
+    analytics: {
+      ...triage.analytics,
+      keywordHits: Math.max(triage.analytics.keywordHits, 1),
+      emergencySignals: triage.analytics.emergencySignals + 1,
+    },
+  };
+}
+
 function normalizeIncident(incident: Incident): Incident {
+  const dispatchedSectors = incident.dispatchedSectors ?? [];
+  const verifiedByHotel = incident.verifiedByHotel ?? false;
+  const hasHotelDispatch = dispatchedSectors.length > 0;
+  const invalidAssignedState = incident.status === 'assigned' && !verifiedByHotel && !hasHotelDispatch;
+  const normalizedAiTriage = normalizeStoredTriage(incident);
+  const normalizedIncidentType = normalizedAiTriage?.incidentType ?? incident.incidentType;
+  const normalizedSeverity = normalizedAiTriage?.severity ?? incident.severity;
+  const normalizedAssignedTo = normalizedAiTriage?.assignedTo ?? incident.assignedTo;
+
   return {
     ...incident,
-    verifiedByHotel: incident.verifiedByHotel ?? false,
-    dispatchedSectors: incident.dispatchedSectors ?? [],
+    status: invalidAssignedState ? 'open' : incident.status,
+    verifiedByHotel: verifiedByHotel || hasHotelDispatch,
+    dispatchedSectors,
+    incidentType: normalizedIncidentType,
+    severity: normalizedSeverity,
+    assignedTo: normalizedAssignedTo,
+    aiSummary: normalizedAiTriage?.summary ?? incident.aiSummary,
+    recommendedAction: normalizedAiTriage?.nextAction ?? incident.recommendedAction,
+    aiTriage: normalizedAiTriage,
     acceptedSectors: incident.acceptedSectors ?? [],
     resolvedSectors: incident.resolvedSectors ?? [],
   };

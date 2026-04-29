@@ -1,7 +1,7 @@
 import React, { createContext, useContext, useEffect, useMemo, useState } from 'react';
 import { User, onAuthStateChanged, signInWithEmailAndPassword, signOut } from 'firebase/auth';
 import { firebaseAuth, firebaseEnabled } from '../firebase/client';
-import { setStaffAuthToken } from '../api/client';
+import { clearStaffAuthToken, setStaffAuthToken } from '../api/client';
 
 interface AuthContextValue {
   user: User | null;
@@ -27,7 +27,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const unsubscribe = onAuthStateChanged(firebaseAuth, (nextUser) => {
       setUser(nextUser);
       if (!nextUser) {
-        setStaffAuthToken(null);
+        clearStaffAuthToken();
       } else {
         void nextUser.getIdToken().then((token) => setStaffAuthToken(token));
       }
@@ -50,6 +50,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     logout: async () => {
       if (!firebaseAuth) return;
       await signOut(firebaseAuth);
+      clearStaffAuthToken();
     },
     getIdToken: async () => {
       if (!user) return null;

@@ -55,7 +55,7 @@ export function FallbackStatusScreen({ connectivity, onModeChange }: Props) {
         <div className="mb-8">
           <h1 className="text-3xl font-black text-crisis-text mb-2">Fallback Status</h1>
           <p className="text-crisis-text-dim text-sm">
-            Hackdays always has a backup. Simulate fallback modes below.
+              Rescue OverClock always has a backup. Simulate fallback modes below.
           </p>
         </div>
 

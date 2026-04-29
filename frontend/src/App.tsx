@@ -6,6 +6,7 @@ import { ProtectedStaffRoute } from './auth/ProtectedStaffRoute';
 import { TouristHomePage } from './pages/TouristHomePage';
 import { GuestPortalPage } from './pages/GuestPortalPage';
 import { StaffPortalPage } from './pages/StaffPortalPage';
+import { SiteChooserPage } from './pages/SiteChooserPage';
 import { AIAgentDashboard } from './pages/AIAgentDashboard';
 import { StaffLoginPage } from './pages/StaffLoginPage';
 import { StaffRoleLoginPage } from './pages/StaffRoleLoginPage';
@@ -19,14 +20,15 @@ import { IncidentDetail } from './pages/IncidentDetail';
 import { TouristProfilePage } from './pages/TouristProfilePage';
 import { TouristPostSosPage } from './pages/TouristPostSosPage';
 import { TouristIncidentsPage } from './pages/TouristIncidentsPage';
+import { HotelTouristRegistrationPage } from './pages/HotelTouristRegistrationPage';
 import { useConnectivity } from './hooks/useConnectivity';
 
 function AppRoutes() {
   const { mode, setManualMode } = useConnectivity();
   const { pathname } = useLocation();
   const navigate = useNavigate();
-  const isTouristRoute = pathname === '/' || pathname.startsWith('/tourist') || pathname.startsWith('/guest') || pathname.startsWith('/sos') || pathname.startsWith('/offline') || pathname.startsWith('/live-guidance') || pathname.startsWith('/fallback') || pathname.startsWith('/profile') || pathname.startsWith('/post-sos');
-  const showBackRow = isTouristRoute && pathname !== '/' && pathname !== '/tourist' && !pathname.startsWith('/post-sos');
+  const isTouristRoute = pathname.startsWith('/tourist-home') || pathname.startsWith('/tourist') || pathname.startsWith('/guest') || pathname.startsWith('/sos') || pathname.startsWith('/offline') || pathname.startsWith('/live-guidance') || pathname.startsWith('/fallback') || pathname.startsWith('/profile') || pathname.startsWith('/post-sos');
+  const showBackRow = isTouristRoute && pathname !== '/tourist-home' && pathname !== '/tourist' && !pathname.startsWith('/post-sos');
 
   return (
     <div className="min-h-screen bg-crisis-bg">
@@ -42,14 +44,17 @@ function AppRoutes() {
       ) : null}
       <main>
         <Routes>
-          <Route path="/" element={<TouristHomePage />} />
+          <Route path="/" element={<SiteChooserPage />} />
+          <Route path="/tourist-home" element={<TouristHomePage />} />
           <Route path="/guest" element={<GuestPortalPage connectivity={mode} />} />
           <Route path="/tourist" element={<GuestPortalPage connectivity={mode} />} />
+          <Route path="/management" element={<StaffLoginPage />} />
           <Route path="/tourist-incidents" element={<TouristIncidentsPage />} />
           <Route path="/profile" element={<TouristProfilePage />} />
           <Route path="/staff-login" element={<StaffLoginPage />} />
           <Route path="/staff-login/:role" element={<StaffRoleLoginPage />} />
           <Route path="/staff" element={<ProtectedStaffRoute><StaffPortalPage connectivity={mode} /></ProtectedStaffRoute>} />
+          <Route path="/staff/register-tourist" element={<ProtectedStaffRoute><HotelTouristRegistrationPage /></ProtectedStaffRoute>} />
           <Route path="/agent" element={<ProtectedStaffRoute><AIAgentDashboard /></ProtectedStaffRoute>} />
           <Route path="/ai-dashboard" element={<ProtectedStaffRoute><AIAgentDashboard /></ProtectedStaffRoute>} />
           <Route path="/location" element={<LocationMapPage />} />

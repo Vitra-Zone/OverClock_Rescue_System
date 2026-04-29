@@ -1,7 +1,7 @@
 import React, { createContext, useContext, useEffect, useMemo, useState } from 'react';
 import { User, onAuthStateChanged, signInWithEmailAndPassword, signOut, createUserWithEmailAndPassword } from 'firebase/auth';
 import { firebaseAuth, firebaseEnabled } from '../firebase/client';
-import { clearAuthToken, setTouristAuthToken, fetchTouristProfile, registerTouristProfile as saveTouristProfile } from '../api/client';
+import { clearTouristAuthToken, setTouristAuthToken, fetchTouristProfile, registerTouristProfile as saveTouristProfile } from '../api/client';
 import type { TouristProfile, RegisterTouristRequest } from '../types/tourist';
 
 interface TouristAuthValue {
@@ -17,6 +17,15 @@ interface TouristAuthValue {
 
 const TouristAuthContext = createContext<TouristAuthValue | undefined>(undefined);
 
+async function isManagementUser(user: User): Promise<boolean> {
+  try {
+    const token = await user.getIdTokenResult(true);
+    return token.claims.managementAccess === true;
+  } catch {
+    return false;
+  }
+}
+
 export function TouristAuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
@@ -24,7 +33,13 @@ export function TouristAuthProvider({ children }: { children: React.ReactNode })
 
   const syncProfile = async (nextUser: User | null) => {
     if (!nextUser) {
-      clearAuthToken();
+      clearTouristAuthToken();
+      setProfile(null);
+      return;
+    }
+
+    if (await isManagementUser(nextUser)) {
+      clearTouristAuthToken();
       setProfile(null);
       return;
     }
@@ -57,6 +72,11 @@ export function TouristAuthProvider({ children }: { children: React.ReactNode })
     login: async (email: string, password: string) => {
       if (!firebaseAuth) throw new Error('Firebase Auth not configured.');
       const credential = await signInWithEmailAndPassword(firebaseAuth, email, password);
+      if (await isManagementUser(credential.user)) {
+        clearTouristAuthToken();
+        setProfile(null);
+        return;
+      }
       const token = await credential.user.getIdToken();
       setTouristAuthToken(token);
       const nextProfile = await fetchTouristProfile();
@@ -65,6 +85,9 @@ export function TouristAuthProvider({ children }: { children: React.ReactNode })
     register: async (request: RegisterTouristRequest & { password: string }) => {
       if (!firebaseAuth) throw new Error('Firebase Auth not configured.');
       const credential = await createUserWithEmailAndPassword(firebaseAuth, request.email, request.password);
+      if (await isManagementUser(credential.user)) {
+        throw new Error('Management accounts cannot be registered as tourist profiles. Use the staff portal.');
+      }
       const token = await credential.user.getIdToken();
       setTouristAuthToken(token);
       const nextProfile = await saveTouristProfile({
@@ -82,10 +105,15 @@ export function TouristAuthProvider({ children }: { children: React.ReactNode })
     logout: async () => {
       if (!firebaseAuth) return;
       await signOut(firebaseAuth);
-      clearAuthToken();
+      clearTouristAuthToken();
       setProfile(null);
     },
     refreshProfile: async () => {
+      if (user && await isManagementUser(user)) {
+        clearTouristAuthToken();
+        setProfile(null);
+        return null;
+      }
       const nextProfile = await fetchTouristProfile();
       setProfile(nextProfile);
       return nextProfile;

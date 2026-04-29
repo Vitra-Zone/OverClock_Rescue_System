@@ -8,7 +8,8 @@
     "build": "tsc",
     "start": "node dist/index.js",
     "cleanup:demo-incidents": "npm run build && node dist/scripts/cleanupDemoIncidents.js",
-    "cleanup:firebase-data": "npm run build && node dist/scripts/clearFirebaseData.js"
+    "cleanup:firebase-data": "npm run build && node dist/scripts/clearFirebaseData.js",
+    "seed:management-account": "npm run build && node dist/scripts/seedManagementAccount.js"
   },
   "dependencies": {
     "firebase-admin": "^13.4.0",

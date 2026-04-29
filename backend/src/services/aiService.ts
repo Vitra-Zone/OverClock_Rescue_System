@@ -102,6 +102,11 @@ function scoreSeverity(message: string, type: IncidentType): Severity {
   return 'medium';
 }
 
+function hasFireSignal(message: string): boolean {
+  const lower = message.toLowerCase();
+  return INCIDENT_KEYWORDS.fire.some((keyword) => lower.includes(keyword));
+}
+
 function assignRole(type: IncidentType): AssignedRole {
   switch (type) {
     case 'medical':     return 'nearest_medical_staff';
@@ -435,6 +440,27 @@ export async function triageIncident(message: string, location: string): Promise
           : fallback.analytics.nonEmergencySignals,
       }
     : fallback.analytics;
+
+  const fireSignalDetected = hasFireSignal(message);
+  if (fireSignalDetected && incidentType !== 'fire') {
+    return {
+      ...fallback,
+      incidentType: 'fire',
+      severity: 'critical',
+      assignedTo: 'fire_safety_officer',
+      nextAction: 'activate_fire_alarm_and_evacuate',
+      summary: fallback.summary,
+      followUpQuestion: fallback.followUpQuestion,
+      confidence: Math.max(fallback.confidence, 92),
+      analytics: {
+        ...fallback.analytics,
+        keywordHits: Math.max(fallback.analytics.keywordHits, 1),
+        emergencySignals: fallback.analytics.emergencySignals + 1,
+      },
+      workflowStage: 'dispatch',
+      workflowSteps: buildWorkflowSteps('fire', 'critical', 'fire_safety_officer', 'activate_fire_alarm_and_evacuate', fallback.fallbackMode, Math.max(fallback.confidence, 92)),
+    };
+  }
 
   return {
     incidentType,

@@ -1,6 +1,6 @@
 import { useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { LayoutDashboard, ArrowRight, Sparkles } from 'lucide-react';
+import { LayoutDashboard, ArrowRight, Sparkles, QrCode } from 'lucide-react';
 import type { ConnectivityMode } from '../types/incident';
 
 interface Props {
@@ -62,7 +62,7 @@ export function StaffPortalPage({ connectivity: _connectivity }: Props) {
         </div>
 
         <div className={currentRole === 'hotel'
-          ? 'grid grid-cols-1 lg:grid-cols-2 gap-6 lg:gap-8 min-h-[calc(100vh-270px)]'
+          ? 'grid grid-cols-1 xl:grid-cols-3 gap-6 lg:gap-8 min-h-[calc(100vh-270px)]'
           : 'grid grid-cols-1 gap-6 lg:gap-8 min-h-[calc(100vh-270px)]'}>
           {/* Dashboard Button */}
           <button
@@ -91,29 +91,55 @@ export function StaffPortalPage({ connectivity: _connectivity }: Props) {
 
           {/* AI Agent Button */}
           {currentRole === 'hotel' && (
-            <button
-              onClick={() => navigate('/agent')}
-              className="card p-8 sm:p-10 lg:p-12 relative overflow-hidden hover:border-crisis-primary/50 transition-all group text-left min-h-[320px] lg:min-h-full"
-            >
-              <div className="absolute inset-0 pointer-events-none">
-                <div className="absolute -top-20 -right-16 w-64 h-64 rounded-full bg-crisis-primary/10 blur-3xl" />
-              </div>
-              <div className="relative h-full flex flex-col justify-between">
-                <div>
-                  <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-crisis-primary/20 border border-crisis-primary/40 text-crisis-primary text-sm mb-5">
-                    <Sparkles size={14} /> AI Agent Console
+            <>
+              <button
+                onClick={() => navigate('/agent')}
+                className="card p-8 sm:p-10 lg:p-12 relative overflow-hidden hover:border-crisis-primary/50 transition-all group text-left min-h-[320px] lg:min-h-full"
+              >
+                <div className="absolute inset-0 pointer-events-none">
+                  <div className="absolute -top-20 -right-16 w-64 h-64 rounded-full bg-crisis-primary/10 blur-3xl" />
+                </div>
+                <div className="relative h-full flex flex-col justify-between">
+                  <div>
+                    <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-crisis-primary/20 border border-crisis-primary/40 text-crisis-primary text-sm mb-5">
+                      <Sparkles size={14} /> AI Agent Console
+                    </div>
+                    <h2 className="text-3xl sm:text-4xl font-black text-crisis-text mb-4">AI Decision Engine</h2>
+                    <p className="text-crisis-text-dim text-lg sm:text-xl mb-8">
+                      Watch the AI analyze incidents, suggest actions, and learn decision patterns in real time.
+                    </p>
                   </div>
-                  <h2 className="text-3xl sm:text-4xl font-black text-crisis-text mb-4">AI Decision Engine</h2>
-                  <p className="text-crisis-text-dim text-lg sm:text-xl mb-8">
-                    Watch the AI analyze incidents, suggest actions, and learn decision patterns in real time.
-                  </p>
+                  <div className="flex items-center gap-2 text-crisis-primary group-hover:translate-x-1 transition-transform text-lg">
+                    <span className="font-semibold">Open Agent Console</span>
+                    <Sparkles size={22} />
+                  </div>
                 </div>
-                <div className="flex items-center gap-2 text-crisis-primary group-hover:translate-x-1 transition-transform text-lg">
-                  <span className="font-semibold">Open Agent Console</span>
-                  <Sparkles size={22} />
+              </button>
+
+              <button
+                onClick={() => navigate('/staff/register-tourist')}
+                className="card p-8 sm:p-10 lg:p-12 relative overflow-hidden hover:border-cyan-400/50 transition-all group text-left min-h-[320px] lg:min-h-full"
+              >
+                <div className="absolute inset-0 pointer-events-none">
+                  <div className="absolute -bottom-20 -right-16 w-64 h-64 rounded-full bg-cyan-500/10 blur-3xl" />
                 </div>
-              </div>
-            </button>
+                <div className="relative h-full flex flex-col justify-between">
+                  <div>
+                    <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-cyan-900/30 border border-cyan-700/40 text-cyan-300 text-sm mb-3">
+                      <QrCode size={14} /> Register Tourist
+                    </div>
+                    <h2 className="text-3xl sm:text-4xl font-black text-crisis-text mb-4">Tourist Registration</h2>
+                    <p className="text-crisis-text-dim text-lg sm:text-xl mb-8">
+                      Open a dedicated page to generate room-stay QR and view linked tourists.
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-2 text-cyan-300 group-hover:translate-x-1 transition-transform text-lg">
+                    <span className="font-semibold">Open Registration Page</span>
+                    <ArrowRight size={22} />
+                  </div>
+                </div>
+              </button>
+            </>
           )}
         </div>
       </div>

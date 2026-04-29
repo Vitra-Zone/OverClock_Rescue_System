@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { MapPin, User, MessageSquare, ArrowLeft, CheckCircle, AlertTriangle } from 'lucide-react';
 import type { ConnectivityMode, Incident, Coordinates } from '../types/incident';
 import { SOSButton } from '../components/SOSButton';
-import { createIncident, runAITriage, triggerFallback } from '../api/client';
+import { createIncident, fetchIncident, runAITriage, triggerFallback } from '../api/client';
 import { useTouristAuth } from '../auth/TouristAuthContext';
 
 interface Props {
@@ -19,7 +19,7 @@ const GUEST_BOUND_HOTEL_CONTEXT_KEY = 'hackdays_guest_bound_hotel_context';
 const GUEST_QR_PREFILL_STORAGE_KEY = 'hackdays_guest_qr_prefill';
 
 const DEFAULT_BOUND_HOTEL_CONTEXT = {
-  name: 'Hackdays Partner Hotel',
+  name: 'Rescue OverClock Partner Hotel',
   address: 'City Center, Main Road, India',
   coordinates: {
     lat: 28.6139,
@@ -144,6 +144,21 @@ export function SOSScreen({ connectivity, showBackButton = true, afterSubmitFlow
       });
     }
   }, [profile]);
+
+  useEffect(() => {
+    if (!incident?.id || step === 'form') return;
+
+    const timer = window.setInterval(async () => {
+      try {
+        const latest = await fetchIncident(incident.id);
+        setIncident(latest);
+      } catch {
+        // Keep the current SOS screen even if a refresh fails.
+      }
+    }, 15000);
+
+    return () => window.clearInterval(timer);
+  }, [incident?.id, step]);
 
   const resetForNewReport = () => {
     window.sessionStorage.removeItem(GUEST_SUCCESS_STORAGE_KEY);
@@ -292,7 +307,7 @@ export function SOSScreen({ connectivity, showBackButton = true, afterSubmitFlow
       }
 
       window.sessionStorage.setItem('hackdays_tourist_last_incident', JSON.stringify({ incidentId: created.id }));
-      navigate(`/post-sos/${created.id}`, { replace: true });
+      setStep('success');
     } catch (err: unknown) {
       console.error(err);
       // If backend is down, simulate offline mode
@@ -342,7 +357,8 @@ export function SOSScreen({ connectivity, showBackButton = true, afterSubmitFlow
               <p className="font-mono text-crisis-primary font-bold">{incident.id.toUpperCase()}</p>
               <div className="divider" />
               <p className="text-xs text-crisis-muted">Status</p>
-              <p className="text-crisis-text font-semibold">AI Triage Completed</p>
+              <p className="text-crisis-text font-semibold">{incident.status.replace('_', ' ')}</p>
+              <p className="text-xs text-crisis-text-dim">This SOS stays here until the incident is resolved.</p>
               {fallbackStatus && <p className="text-xs text-crisis-primary">{fallbackStatus}</p>}
             </div>
           )}
@@ -382,10 +398,10 @@ export function SOSScreen({ connectivity, showBackButton = true, afterSubmitFlow
               <>
                 <button
                   id="sos-view-incident-btn"
-                  onClick={() => incident ? navigate(`/dashboard/${incident.id}`) : navigate('/dashboard')}
+                  onClick={() => incident ? navigate(`/post-sos/${incident.id}`) : navigate('/tourist')}
                   className="btn-primary w-full"
                 >
-                  View Incident Status
+                  Open SOS Follow-up
                 </button>
                 <button id="sos-home-btn" onClick={() => navigate('/')} className="btn-ghost w-full text-sm">
                   Return to Home

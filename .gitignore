@@ -16,3 +16,6 @@ frontend/.env
 .DS_Store
 .vscode/
 .idea/
+
+# Windows system files
+desktop.ini

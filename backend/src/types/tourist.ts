@@ -5,6 +5,8 @@ export interface TouristHotelBinding {
   hotelLocation: string;
   roomNumber: string;
   nightsOfStay: number;
+  stayStartDate?: string;
+  stayEndDate?: string;
   hotelPhoneNumber?: string;
   qrPayload?: string;
   sharedAt?: string;

@@ -294,3 +294,49 @@ code {
     border-right-color: var(--border);
   }
 }
+
+/* App brand styling (centered header) */
+.app-brand {
+  pointer-events: none;
+}
+.app-brand > button {
+  pointer-events: auto;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.app-brand-img {
+  width: 42px;
+  height: 42px;
+  object-fit: contain;
+  border-radius: 6px;
+  background: transparent;
+  display: block !important;
+  flex-shrink: 0;
+}
+.brand-fallback {
+  width: 40px;
+  height: 40px;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  border-radius: 8px;
+  background: linear-gradient(135deg, #00c853 0%, #00e676 100%);
+  color: #071018;
+  font-weight: 800;
+  font-size: 14px;
+  letter-spacing: 0.6px;
+}
+.app-brand-text {
+  font-weight: 700;
+  color: #ffffff;
+  font-size: 16px;
+  letter-spacing: 0.3px;
+  text-transform: uppercase;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+}
+
+@media (max-width: 640px) {
+  .app-brand-text { font-size: 13px; }
+  .app-brand-img, .brand-fallback { width: 36px; height: 36px; }
+}

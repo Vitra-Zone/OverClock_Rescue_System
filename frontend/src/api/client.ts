@@ -26,24 +26,34 @@ const api = axios.create({
   timeout: 10000,
 });
 
-let authToken: string | null = null;
+let staffAuthToken: string | null = null;
+let touristAuthToken: string | null = null;
 
 export function setStaffAuthToken(token: string | null) {
-  authToken = token;
+  staffAuthToken = token;
 }
 
 export function setTouristAuthToken(token: string | null) {
-  authToken = token;
+  touristAuthToken = token;
 }
 
-export function clearAuthToken() {
-  authToken = null;
+export function clearStaffAuthToken() {
+  staffAuthToken = null;
+}
+
+export function clearTouristAuthToken() {
+  touristAuthToken = null;
 }
 
 api.interceptors.request.use((config) => {
-  if (authToken) {
+  const requestPath = String(config.url ?? '');
+  const useTouristToken = requestPath.startsWith('/tourists/me');
+  const useStaffToken = requestPath.startsWith('/incidents') || requestPath.startsWith('/ai') || requestPath.startsWith('/fallback') || requestPath.startsWith('/notifications') || requestPath.startsWith('/tourists/hotel-linked');
+  const token = useTouristToken ? touristAuthToken : useStaffToken ? staffAuthToken : staffAuthToken ?? touristAuthToken;
+
+  if (token) {
     config.headers = config.headers ?? {};
-    config.headers.Authorization = `Bearer ${authToken}`;
+    config.headers.Authorization = `Bearer ${token}`;
   }
   return config;
 });
@@ -184,11 +194,27 @@ export async function bindTouristHotel(req: {
   hotelLocation: string;
   roomNumber: string;
   nightsOfStay: number;
+  stayStartDate?: string;
+  stayEndDate?: string;
   hotelPhoneNumber?: string;
   qrPayload?: string;
 }): Promise<TouristProfile> {
   const res = await api.post<APIResponse<TouristProfile>>('/tourists/me/hotel-binding', req);
   return res.data.data!;
+}
+
+export async function fetchHotelLinkedTourists(req: {
+  hotelName: string;
+  hotelLocation?: string;
+  roomNumber?: string;
+}): Promise<TouristProfile[]> {
+  const query = new URLSearchParams();
+  query.set('hotelName', req.hotelName);
+  if (req.hotelLocation) query.set('hotelLocation', req.hotelLocation);
+  if (req.roomNumber) query.set('roomNumber', req.roomNumber);
+
+  const res = await api.get<APIResponse<TouristProfile[]>>(`/tourists/hotel-linked?${query.toString()}`);
+  return res.data.data ?? [];
 }
 
 export async function askTouristAssistant(message: string, incidentContext?: Record<string, unknown>): Promise<TouristChatResponse> {

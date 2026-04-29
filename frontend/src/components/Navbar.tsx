@@ -31,13 +31,14 @@ export function Navbar({ connectivity, onModeChange }: Props) {
   const { user, enabled, logout: logoutStaff } = useAuth();
   const { user: touristUser, logout: logoutTourist, profile: touristProfile } = useTouristAuth();
   const navbarConnectivity: ConnectivityMode = connectivity === 'offline' ? 'offline' : 'online';
-  
-  const isManagementRoute = pathname.startsWith('/staff') || pathname.startsWith('/dashboard') || pathname.startsWith('/agent');
-  const isTouristRoute = pathname === '/' || pathname.startsWith('/tourist') || pathname.startsWith('/guest') || pathname.startsWith('/sos') || pathname.startsWith('/offline') || pathname.startsWith('/live-guidance') || pathname.startsWith('/fallback') || pathname.startsWith('/profile') || pathname.startsWith('/post-sos');
+
+  const isManagementRoute = pathname.startsWith('/management') || pathname.startsWith('/staff') || pathname.startsWith('/dashboard') || pathname.startsWith('/agent');
+  const isTouristRoute = pathname.startsWith('/tourist-home') || pathname.startsWith('/tourist') || pathname.startsWith('/guest') || pathname.startsWith('/sos') || pathname.startsWith('/offline') || pathname.startsWith('/live-guidance') || pathname.startsWith('/fallback') || pathname.startsWith('/profile') || pathname.startsWith('/post-sos');
+  const isChooserRoute = pathname === '/';
   const showConnectivity = isTouristRoute;
-  const showTouristActions = isTouristRoute && pathname !== '/' && !pathname.startsWith('/post-sos') && Boolean(touristUser);
+  const showTouristActions = isTouristRoute && pathname !== '/tourist-home' && !pathname.startsWith('/post-sos') && Boolean(touristUser);
   const showTouristEdit = showTouristActions && Boolean(touristProfile);
-  const showStaffLogout = isManagementRoute && enabled;
+  const showStaffLogout = isManagementRoute && enabled && Boolean(user);
   const showTouristLogout = showTouristActions;
 
   React.useEffect(() => {
@@ -46,19 +47,15 @@ export function Navbar({ connectivity, onModeChange }: Props) {
 
   return (
     <header className="sticky top-0 z-50 bg-crisis-surface/80 backdrop-blur-md border-b border-crisis-border">
-      <div className="max-w-6xl mx-auto px-4 h-14 flex items-center justify-between gap-4 relative">
-        <div className="flex items-center gap-2 min-w-0">
-          <button onClick={() => navigate('/?chooser=1')} className="flex items-center gap-2 shrink-0">
-            <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-crisis-primary to-crisis-accent flex items-center justify-center">
-              <Shield size={16} className="text-white" />
-            </div>
-            <span className="font-bold text-crisis-text text-sm">Hackdays</span>
-          </button>
-        </div>
+      <div className="max-w-6xl mx-auto px-4 h-14 flex items-center justify-center relative">
+        <button onClick={() => navigate(isManagementRoute ? '/management' : isTouristRoute ? '/tourist-home' : '/')} className="absolute left-4 flex items-center gap-2 shrink-0">
+          <img src="/rescue-overclock-logo.png" alt="Rescue OverClock" className="w-8 h-8" />
+          <span className="font-bold text-crisis-text text-sm hidden sm:block">Rescue OverClock</span>
+        </button>
 
-        {!isManagementRoute && !isTouristRoute && (
+        {isChooserRoute && (
           <nav className="flex items-center gap-0.5">
-            {NAV_ITEMS.map(({ path, label, icon }) => {
+            {NAV_ITEMS.filter(({ path }) => path === '/tourist-home' || path === '/management').map(({ path, label, icon }) => {
               const active = pathname === path || (path !== '/' && pathname.startsWith(path));
               return (
                 <button
@@ -79,8 +76,31 @@ export function Navbar({ connectivity, onModeChange }: Props) {
           </nav>
         )}
 
-        {isTouristRoute && pathname !== '/' && !pathname.startsWith('/post-sos') ? (
-          <div className="flex items-center gap-2">
+        {isChooserRoute && (
+          <nav className="flex items-center gap-0.5">
+            {NAV_ITEMS.filter(({ path }) => path === '/tourist-home' || path === '/management').map(({ path, label, icon }) => {
+              const active = pathname === path || (path !== '/' && pathname.startsWith(path));
+              return (
+                <button
+                  key={path}
+                  id={`nav-${label.toLowerCase()}`}
+                  onClick={() => navigate(path)}
+                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all duration-150
+                    ${active
+                      ? 'bg-crisis-primary/15 text-crisis-primary'
+                      : 'text-crisis-text-dim hover:text-crisis-text hover:bg-white/5'
+                    }`}
+                >
+                  {icon}
+                  <span className="hidden sm:block">{label}</span>
+                </button>
+              );
+            })}
+          </nav>
+        )}
+
+        {isTouristRoute ? (
+          <div className="flex items-center gap-2 ml-auto">
             {showConnectivity && (
               <ConnectivityBadge
                 mode={navbarConnectivity}
@@ -128,7 +148,7 @@ export function Navbar({ connectivity, onModeChange }: Props) {
             ) : null}
           </div>
         ) : isManagementRoute ? null : (
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 ml-auto">
             {showConnectivity && (
               <ConnectivityBadge
                 mode={navbarConnectivity}
@@ -148,7 +168,7 @@ export function Navbar({ connectivity, onModeChange }: Props) {
               await logoutStaff();
               navigate('/');
             }}
-            className="btn-ghost text-xs inline-flex items-center gap-1"
+            className="btn-ghost text-xs inline-flex items-center gap-1 ml-auto"
           >
             <LogOut size={14} /> Logout
           </button>

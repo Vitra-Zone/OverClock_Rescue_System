@@ -10,13 +10,43 @@ interface HotelQrPayload {
   hotelLocation: string;
   roomNumber: string;
   nightsOfStay: number;
+  stayStartDate?: string;
+  stayEndDate?: string;
   hotelPhoneNumber?: string;
 }
 
+function isIsoDate(value: string | undefined): boolean {
+  if (!value) return false;
+  return /^\d{4}-\d{2}-\d{2}$/.test(value.trim());
+}
+
+function calculateNights(startDate: string, endDate: string): number {
+  const start = new Date(`${startDate}T00:00:00Z`).getTime();
+  const end = new Date(`${endDate}T00:00:00Z`).getTime();
+  const diff = Math.floor((end - start) / (1000 * 60 * 60 * 24));
+  return Number.isFinite(diff) ? Math.max(1, diff) : 1;
+}
+
 function parseHotelQrPayload(rawPayload: string): HotelQrPayload | null {
-  const [hotelName, hotelLocation, roomNumber, nightsRaw, hotelPhoneNumber] = rawPayload.split('|').map((part) => part.trim());
-  const nightsOfStay = Number.parseInt(nightsRaw ?? '', 10);
-  if (!hotelName || !hotelLocation || !roomNumber || !Number.isFinite(nightsOfStay)) {
+  const parts = rawPayload.split('|').map((part) => part.trim());
+  const [hotelName, hotelLocation, roomNumber, fourth, fifth, sixth, seventh] = parts;
+  if (!hotelName || !hotelLocation || !roomNumber || !fourth) {
+    return null;
+  }
+
+  let nightsOfStay = Number.parseInt(fourth ?? '', 10);
+  let hotelPhoneNumber: string | undefined = fifth || undefined;
+  let stayStartDate: string | undefined = sixth || undefined;
+  let stayEndDate: string | undefined = seventh || undefined;
+
+  if (isIsoDate(fourth) && isIsoDate(fifth)) {
+    stayStartDate = fourth;
+    stayEndDate = fifth;
+    nightsOfStay = calculateNights(fourth, fifth);
+    hotelPhoneNumber = sixth || undefined;
+  }
+
+  if (!Number.isFinite(nightsOfStay)) {
     return null;
   }
 
@@ -25,7 +55,9 @@ function parseHotelQrPayload(rawPayload: string): HotelQrPayload | null {
     hotelLocation,
     roomNumber,
     nightsOfStay,
-    hotelPhoneNumber: hotelPhoneNumber || undefined,
+    stayStartDate,
+    stayEndDate,
+    hotelPhoneNumber,
   };
 }
 
@@ -242,9 +274,11 @@ export function TouristPortalPage() {
                 <div className="flex items-center gap-2 text-emerald-300 font-semibold"><BadgeCheck size={16} /> Bound to hotel</div>
                 <p className="text-crisis-text font-semibold text-lg">{profile?.hotelBinding?.hotelName}</p>
                 <p className="text-crisis-text-dim text-sm">{profile?.hotelBinding?.hotelLocation}</p>
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-sm">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3 text-sm">
                   <div className="rounded-2xl bg-black/20 p-3 border border-white/10"><span className="text-crisis-muted">Room</span><p className="text-crisis-text font-semibold">{profile?.hotelBinding?.roomNumber}</p></div>
                   <div className="rounded-2xl bg-black/20 p-3 border border-white/10"><span className="text-crisis-muted">Nights</span><p className="text-crisis-text font-semibold">{profile?.hotelBinding?.nightsOfStay}</p></div>
+                  <div className="rounded-2xl bg-black/20 p-3 border border-white/10"><span className="text-crisis-muted">Start</span><p className="text-crisis-text font-semibold">{profile?.hotelBinding?.stayStartDate ?? 'N/A'}</p></div>
+                  <div className="rounded-2xl bg-black/20 p-3 border border-white/10"><span className="text-crisis-muted">End</span><p className="text-crisis-text font-semibold">{profile?.hotelBinding?.stayEndDate ?? 'N/A'}</p></div>
                   <div className="rounded-2xl bg-black/20 p-3 border border-white/10"><span className="text-crisis-muted">Contact</span><p className="text-crisis-text font-semibold">{profile?.hotelBinding?.hotelPhoneNumber ?? 'N/A'}</p></div>
                 </div>
               </div>
@@ -280,7 +314,7 @@ export function TouristPortalPage() {
             <div className="flex items-center justify-between gap-3">
               <div>
                 <h3 className="text-2xl font-bold text-crisis-text">Scan hotel QR</h3>
-                <p className="text-sm text-crisis-text-dim">Payload format: HotelName|HotelLocation|RoomNumber|NightsOfStay|HotelPhoneNumber</p>
+                <p className="text-sm text-crisis-text-dim">Payload format: HotelName|HotelLocation|RoomNumber|NightsOfStay|HotelPhoneNumber|StartDate|EndDate</p>
               </div>
               <button onClick={() => { stopScanner(); setScannerOpen(false); }} className="btn-ghost">Close</button>
             </div>

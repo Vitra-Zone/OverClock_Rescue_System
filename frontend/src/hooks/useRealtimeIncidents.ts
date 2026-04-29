@@ -1,7 +1,5 @@
 import { useEffect, useState } from 'react';
-import { collection, onSnapshot, orderBy, query } from 'firebase/firestore';
 import type { Incident } from '../types/incident';
-import { firebaseDb, firebaseEnabled } from '../firebase/client';
 import { fetchIncidents } from '../api/client';
 
 export function useRealtimeIncidents() {
@@ -10,27 +8,9 @@ export function useRealtimeIncidents() {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (firebaseEnabled && firebaseDb) {
-      const incidentsQuery = query(collection(firebaseDb, 'incidents'), orderBy('createdAt', 'desc'));
-      const unsubscribe = onSnapshot(
-        incidentsQuery,
-        (snapshot) => {
-          const list = snapshot.docs.map((doc) => doc.data() as Incident);
-          setIncidents(list);
-          setLoading(false);
-          setError(null);
-        },
-        () => {
-          setError('Realtime listener failed. Falling back to API.');
-          setLoading(false);
-        }
-      );
-      return unsubscribe;
-    }
-
     let mounted = true;
 
-    const load = async () => {
+    const loadFromApi = async () => {
       try {
         const list = await fetchIncidents();
         if (!mounted) return;
@@ -44,8 +24,8 @@ export function useRealtimeIncidents() {
       }
     };
 
-    void load();
-    const interval = setInterval(load, 15000);
+    void loadFromApi();
+    const interval = setInterval(loadFromApi, 15000);
 
     return () => {
       mounted = false;
