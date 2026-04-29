@@ -1,6 +1,6 @@
 {
-  "name": "Hackdays Assist",
-  "short_name": "Hackdays",
+  "name": "Rescue OverClock",
+  "short_name": "Rescue OC",
   "description": "AI-powered emergency response for hospitality venues.",
   "start_url": "/",
   "display": "standalone",

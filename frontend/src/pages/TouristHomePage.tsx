@@ -2,6 +2,7 @@ import { useEffect, useState, type FormEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Shield, LogIn, UserPlus } from 'lucide-react';
 import { useTouristAuth } from '../auth/TouristAuthContext';
+import { fetchTouristIncidents } from '../api/client';
 import { TouristProfileForm } from '../components/TouristProfileForm';
 import type { TouristProfileFormValues } from '../components/TouristProfileForm';
 
@@ -44,9 +45,35 @@ export function TouristHomePage() {
   const [registerError, setRegisterError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (user && profile) {
+    if (!user || !profile) return;
+
+    const tryRestoreIncident = async () => {
+      try {
+        const raw = window.localStorage.getItem('hackdays_tourist_last_incident');
+        if (!raw) {
+          navigate('/tourist', { replace: true });
+          return;
+        }
+        const parsed = JSON.parse(raw) as { incidentId?: string } | null;
+        const candidateId = parsed?.incidentId;
+        if (!candidateId) {
+          navigate('/tourist', { replace: true });
+          return;
+        }
+
+        const incidents = await fetchTouristIncidents();
+        const found = incidents.find((i) => i.id === candidateId) ?? null;
+        if (found && found.status !== 'closed') {
+          navigate(`/post-sos/${candidateId}`, { replace: true });
+          return;
+        }
+      } catch (e) {
+        // ignore and fall back to tourist home
+      }
       navigate('/tourist', { replace: true });
-    }
+    };
+
+    void tryRestoreIncident();
   }, [navigate, profile, user]);
 
   if (enabled && loading) {

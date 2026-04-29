@@ -39,6 +39,11 @@ export interface TouristChatResponse {
   mode: 'gemini' | 'rule_based';
 }
 
+export interface TouristChatMessage {
+  role: 'user' | 'assistant';
+  text: string;
+}
+
 export interface ContactRequest {
   incidentId: string;
   mode: 'voice' | 'video';

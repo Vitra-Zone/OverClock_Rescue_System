@@ -151,7 +151,7 @@ router.post('/me/chat', requireFirebaseAuth, async (req: AuthenticatedRequest, r
   }
 
   const profile = await getTouristProfileByUid(req.authUserId!);
-  const response = await generateTouristGuidanceReply(body.message, profile, body.incidentContext);
+  const response = await generateTouristGuidanceReply(body.message, profile, body.incidentContext, body.history ?? []);
   return res.json({ success: true, data: response, timestamp: new Date().toISOString() });
 });
 

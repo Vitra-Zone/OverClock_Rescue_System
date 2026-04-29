@@ -55,30 +55,7 @@ export function Navbar({ connectivity, onModeChange }: Props) {
 
         {isChooserRoute && (
           <nav className="flex items-center gap-0.5">
-            {NAV_ITEMS.filter(({ path }) => path === '/tourist-home' || path === '/management').map(({ path, label, icon }) => {
-              const active = pathname === path || (path !== '/' && pathname.startsWith(path));
-              return (
-                <button
-                  key={path}
-                  id={`nav-${label.toLowerCase()}`}
-                  onClick={() => navigate(path)}
-                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all duration-150
-                    ${active
-                      ? 'bg-crisis-primary/15 text-crisis-primary'
-                      : 'text-crisis-text-dim hover:text-crisis-text hover:bg-white/5'
-                    }`}
-                >
-                  {icon}
-                  <span className="hidden sm:block">{label}</span>
-                </button>
-              );
-            })}
-          </nav>
-        )}
-
-        {isChooserRoute && (
-          <nav className="flex items-center gap-0.5">
-            {NAV_ITEMS.filter(({ path }) => path === '/tourist-home' || path === '/management').map(({ path, label, icon }) => {
+            {NAV_ITEMS.filter(({ path }) => path === '/tourist-home').map(({ path, label, icon }) => {
               const active = pathname === path || (path !== '/' && pathname.startsWith(path));
               return (
                 <button
@@ -147,7 +124,7 @@ export function Navbar({ connectivity, onModeChange }: Props) {
               </div>
             ) : null}
           </div>
-        ) : isManagementRoute ? null : (
+        ) : !isChooserRoute && !isManagementRoute ? (
           <div className="flex items-center gap-2 ml-auto">
             {showConnectivity && (
               <ConnectivityBadge
@@ -160,7 +137,7 @@ export function Navbar({ connectivity, onModeChange }: Props) {
               <button onClick={() => navigate('/staff-login')} className="btn-ghost text-xs">Staff Login</button>
             ) : null}
           </div>
-        )}
+        ) : null}
 
         {showStaffLogout && (
           <button

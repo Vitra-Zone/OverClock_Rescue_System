@@ -217,7 +217,7 @@ export function HomePage({ connectivity: _connectivity }: Props) {
           <div className="relative text-center max-w-3xl mx-auto">
             <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-crisis-bg/80 border border-crisis-border text-crisis-text-dim text-xs mb-6">
               <Shield size={14} className="text-crisis-primary" />
-              Rescue OverClock · Emergency Response System
+              Rescue OverClock
             </div>
 
             <h1 className="text-4xl sm:text-6xl font-black leading-none tracking-tight text-crisis-text mb-4">

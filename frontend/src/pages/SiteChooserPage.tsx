@@ -17,7 +17,7 @@ export function SiteChooserPage() {
               <Shield size={14} className="text-crisis-primary" /> Choose your site
             </div>
             <h1 className="text-4xl sm:text-6xl font-black tracking-tight text-crisis-text">
-              OverClock Rescue System
+              Rescue OverClock
             </h1>
             <p className="max-w-2xl text-crisis-text-dim text-base sm:text-lg">
               Tourist and management now start from separate entry points. Pick the site you want to use and stay inside that experience.

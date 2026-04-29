@@ -125,8 +125,24 @@ export function TouristAuthProvider({ children }: { children: React.ReactNode })
 
 export function useTouristAuth() {
   const context = useContext(TouristAuthContext);
-  if (!context) {
-    throw new Error('useTouristAuth must be used within TouristAuthProvider');
+  if (context) {
+    return context;
   }
-  return context;
+
+  return {
+    user: null,
+    loading: false,
+    enabled: false,
+    profile: null,
+    login: async () => {
+      throw new Error('TouristAuthProvider is unavailable.');
+    },
+    register: async () => {
+      throw new Error('TouristAuthProvider is unavailable.');
+    },
+    logout: async () => {
+      return;
+    },
+    refreshProfile: async () => null,
+  };
 }

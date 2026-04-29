@@ -320,7 +320,11 @@ export function SOSScreen({ connectivity, showBackButton = true, afterSubmitFlow
         );
       }
 
-      window.sessionStorage.setItem('hackdays_tourist_last_incident', JSON.stringify({ incidentId: created.id }));
+      try {
+        window.localStorage.setItem('hackdays_tourist_last_incident', JSON.stringify({ incidentId: created.id }));
+      } catch {
+        // ignore storage errors
+      }
       setStep('success');
     } catch (err: unknown) {
       console.error(err);

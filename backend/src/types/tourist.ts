@@ -60,6 +60,7 @@ export interface UpdateTouristProfileRequest {
 
 export interface TouristChatRequest {
   message: string;
+  history?: TouristChatMessage[];
   incidentContext?: {
     incidentId?: string;
     incidentType?: string;
@@ -67,6 +68,11 @@ export interface TouristChatRequest {
     location?: string;
     status?: string;
   };
+}
+
+export interface TouristChatMessage {
+  role: 'user' | 'assistant';
+  text: string;
 }
 
 export interface TouristChatResponse {

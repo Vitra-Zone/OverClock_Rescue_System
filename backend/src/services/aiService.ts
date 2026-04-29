@@ -616,20 +616,69 @@ export interface TouristGuidanceReply {
   mode: 'gemini' | 'rule_based';
 }
 
+type TouristChatMessage = {
+  role: 'user' | 'assistant';
+  text: string;
+};
+
 function buildTouristGuidanceFallback(
   message: string,
   profile?: TouristProfile | null,
-  incidentContext?: { incidentType?: string; severity?: string; location?: string; status?: string }
+  incidentContext?: { incidentType?: string; severity?: string; location?: string; status?: string },
+  history: TouristChatMessage[] = []
 ): TouristGuidanceReply {
   const lower = message.toLowerCase();
-  const urgent = lower.includes('fire') || lower.includes('blood') || lower.includes('unconscious') || lower.includes('danger');
+  const urgent = lower.includes('fire') || lower.includes('smoke') || lower.includes('blood') || lower.includes('unconscious') || lower.includes('danger') || lower.includes('burn');
   const title = profile?.touristFirstName ? `${profile.touristFirstName}, ` : '';
   const incidentBits = incidentContext?.incidentType ? ` for a ${incidentContext.incidentType} incident` : '';
+  const lastAssistantReply = [...history].reverse().find((entry) => entry.role === 'assistant')?.text ?? '';
+  const followUpHint = lastAssistantReply ? ' I can also help with the next step you asked about.' : '';
+  const incidentType = (incidentContext?.incidentType ?? '').toLowerCase();
+  const severity = (incidentContext?.severity ?? '').toLowerCase();
+  const status = (incidentContext?.status ?? '').toLowerCase();
+
+  if (incidentType === 'fire' || lower.includes('smoke') || lower.includes('burn')) {
+    return {
+      reply: `${title}${lower.includes('wait') || lower.includes('go out')
+        ? 'go out now if the hallway is clear.'
+        : 'leave the room immediately if you can do so safely.'} Do not use the lift. Close the door behind you, stay low if there is smoke, and call hotel staff or emergency services from a safe place outside.${followUpHint}`,
+      actionItems: [
+        'Leave the room if the corridor is clear',
+        'Do not use the lift',
+        'Call hotel staff or emergency services once outside',
+      ],
+      mode: 'rule_based',
+    };
+  }
+
+  if (incidentType === 'security') {
+    return {
+      reply: `${title}lock the door if you can, avoid opening it to strangers, and contact hotel security right away${incidentBits}. If you are in immediate danger, call emergency services and move to a safer room or exit route.${followUpHint}`,
+      actionItems: ['Lock the door', 'Contact hotel security', 'Move to a safer place if needed'],
+      mode: 'rule_based',
+    };
+  }
+
+  if (incidentType === 'medical') {
+    return {
+      reply: `${title}keep the person still and comfortable, call for medical help now${incidentBits}, and share the exact symptoms with hotel staff. If breathing stops or the person becomes unconscious, treat it as urgent emergency response.${followUpHint}`,
+      actionItems: ['Call for medical help', 'Share symptoms clearly', 'Stay with the guest'],
+      mode: 'rule_based',
+    };
+  }
+
+  if (severity === 'critical' || status === 'open') {
+    return {
+      reply: `${title}treat this as urgent${incidentBits}. Stay calm, move to the safest nearby place, and keep your phone ready while hotel staff respond.${followUpHint}`,
+      actionItems: ['Move to the safest nearby place', 'Keep your phone ready', 'Wait for hotel staff instructions'],
+      mode: 'rule_based',
+    };
+  }
 
   return {
     reply: urgent
-      ? `${title}move to safety immediately${incidentBits}. Stay calm, alert hotel staff, and keep your phone ready.`
-      : `${title}here is the safest next step${incidentBits}: keep calm, follow the hotel guidance, and share one clear detail at a time.`,
+      ? `${title}move to safety immediately${incidentBits}. Stay calm, alert hotel staff, and keep your phone ready.${followUpHint}`
+      : `${title}here is the safest next step${incidentBits}: keep calm, follow the hotel guidance, and share one clear detail at a time.${followUpHint}`,
     actionItems: urgent
       ? ['Move away from danger', 'Call hotel staff or emergency services', 'Share your exact location']
       : ['State the problem in one line', 'Keep the app open for updates', 'Use SOS if the situation changes'],
@@ -640,9 +689,10 @@ function buildTouristGuidanceFallback(
 export async function generateTouristGuidanceReply(
   message: string,
   profile?: TouristProfile | null,
-  incidentContext?: { incidentType?: string; severity?: string; location?: string; status?: string }
+  incidentContext?: { incidentType?: string; severity?: string; location?: string; status?: string },
+  history: TouristChatMessage[] = []
 ): Promise<TouristGuidanceReply> {
-  const fallback = buildTouristGuidanceFallback(message, profile, incidentContext);
+  const fallback = buildTouristGuidanceFallback(message, profile, incidentContext, history);
 
   if (!geminiEnabled) {
     return fallback;
@@ -650,6 +700,7 @@ export async function generateTouristGuidanceReply(
 
   const prompt = [
     'You are a calm, concise tourist emergency assistant for a hotel rescue system.',
+    'Act like a normal chatbot: answer the latest user message directly, stay on topic, and use prior chat turns for context.',
     'Return STRICT JSON with keys: reply, actionItems.',
     'Reply should be short, practical, and reassuring.',
     'Action items should be an array of 2 to 4 short imperative sentences.',
@@ -657,6 +708,7 @@ export async function generateTouristGuidanceReply(
     'Do not mention medical guidance unless the context clearly indicates a medical issue.',
     `Tourist profile: ${JSON.stringify(profile ?? null)}`,
     `Incident context: ${JSON.stringify(incidentContext ?? null)}`,
+    `Recent conversation: ${JSON.stringify(history.slice(-8))}`,
     `Tourist message: ${message}`,
   ].join('\n');
 

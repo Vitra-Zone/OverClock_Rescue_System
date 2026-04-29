@@ -11,6 +11,7 @@ import type {
 import type {
   TouristProfile,
   TouristChatResponse,
+  TouristChatMessage,
   ContactRequest,
   RegisterTouristRequest,
   UpdateTouristProfileRequest,
@@ -217,8 +218,12 @@ export async function fetchHotelLinkedTourists(req: {
   return res.data.data ?? [];
 }
 
-export async function askTouristAssistant(message: string, incidentContext?: Record<string, unknown>): Promise<TouristChatResponse> {
-  const res = await api.post<APIResponse<TouristChatResponse>>('/tourists/me/chat', { message, incidentContext });
+export async function askTouristAssistant(
+  message: string,
+  incidentContext?: Record<string, unknown>,
+  history?: TouristChatMessage[]
+): Promise<TouristChatResponse> {
+  const res = await api.post<APIResponse<TouristChatResponse>>('/tourists/me/chat', { message, incidentContext, history });
   return res.data.data!;
 }
 
