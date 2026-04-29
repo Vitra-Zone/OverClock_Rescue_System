@@ -94,6 +94,10 @@ Backend deployment flow:
 5. Keep `GEMINI_API_KEY` empty if you want the local rule-based AI fallback.
 6. Deploy with the default build and start commands from the blueprint.
 
+Firebase project id in this repo:
+- `.firebaserc` now points to `overclock-rescue-system`.
+- Do not use the deleted `crisisb` alias anymore.
+
 Frontend deployment flow:
 1. Set `VITE_BACKEND_URL` to your Render backend URL before building.
 2. Run `npm run build` in `frontend`.
