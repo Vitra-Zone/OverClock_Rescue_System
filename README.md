@@ -79,9 +79,26 @@ Expected health flags:
 
 ## Deployment Status
 
-Render and frontend hosting deployment files are intentionally removed for now.
+Recommended deployment split:
+1. Backend on Render free tier.
+2. Frontend on Firebase Hosting.
+3. Firebase still handles Auth/Firestore for the app runtime.
 
-Current focus is Firebase refresh only:
+Render blueprint is included in `render.yaml`.
+
+Backend deployment flow:
+1. Create a Render Web Service from `render.yaml` or import the repo.
+2. Set `FIREBASE_SERVICE_ACCOUNT_JSON` in Render as a secret env var.
+3. Set `CORS_ORIGINS` to your Firebase Hosting domains, for example `https://your-project.web.app,https://your-project.firebaseapp.com`.
+4. Keep `GEMINI_API_KEY` empty if you want the local rule-based AI fallback.
+5. Deploy with the default build and start commands from the blueprint.
+
+Frontend deployment flow:
+1. Set `VITE_BACKEND_URL` to your Render backend URL before building.
+2. Run `npm run build` in `frontend`.
+3. Deploy `frontend/dist` to Firebase Hosting.
+
+Current focus:
 1. Configure Firebase project settings and credentials in env files.
 2. Refresh Firestore rules and indexes.
 3. Validate Firebase Auth and Firestore from local app runtime.
@@ -136,6 +153,7 @@ firebase deploy --only firestore:indexes
 - Never commit backend .env or service account JSON.
 - Rotate service-account keys if exposed.
 - Keep frontend Firebase web keys in frontend .env only.
+- Store the Render Firebase service account as a secret env var, not in the repo.
 
 ## Current Limitations
 
