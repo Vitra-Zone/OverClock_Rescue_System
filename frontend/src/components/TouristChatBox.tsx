@@ -22,16 +22,18 @@ export function TouristChatBox({ incidentContext, className = '' }: Props) {
     setError(null);
 
     // add user message locally
-    setMessages((m) => [...m, { role: 'user', text: trimmed }]);
+    const userMessage: ChatEntry = { role: 'user', text: trimmed };
+    setMessages((m) => [...m, userMessage]);
     setInput('');
     setLoading(true);
 
     try {
-      const history: TouristChatMessage[] = [...messages, { role: 'user', text: trimmed }].slice(-8).map(({ role, text }) => ({ role, text }));
+      const history: TouristChatMessage[] = [...messages, userMessage].slice(-8).map(({ role, text }) => ({ role, text }));
       const next: TouristChatResponse = await askTouristAssistant(trimmed, incidentContext, history);
 
       // append assistant reply
-      setMessages((m) => [...m, { role: 'assistant', text: next.reply, actionItems: next.actionItems }]);
+      const assistantMessage: ChatEntry = { role: 'assistant', text: next.reply, actionItems: next.actionItems };
+      setMessages((m) => [...m, assistantMessage]);
     } catch (e) {
       setError('AI chat is unavailable right now. Please follow the emergency steps shown on this page.');
     } finally {
