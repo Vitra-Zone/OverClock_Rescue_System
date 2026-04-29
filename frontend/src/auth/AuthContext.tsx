@@ -3,6 +3,15 @@ import { User, onAuthStateChanged, signInWithEmailAndPassword, signOut } from 'f
 import { firebaseAuth, firebaseEnabled } from '../firebase/client';
 import { clearStaffAuthToken, setStaffAuthToken } from '../api/client';
 
+async function isManagementUser(user: User): Promise<boolean> {
+  try {
+    const token = await user.getIdTokenResult(true);
+    return token.claims.managementAccess === true;
+  } catch {
+    return false;
+  }
+}
+
 interface AuthContextValue {
   user: User | null;
   loading: boolean;
@@ -43,7 +52,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     enabled: firebaseEnabled,
     login: async (email: string, password: string) => {
       if (!firebaseAuth) throw new Error('Firebase Auth not configured.');
-      const credential = await signInWithEmailAndPassword(firebaseAuth, email, password);
+      const credential = await signInWithEmailAndPassword(firebaseAuth, email.trim(), password);
+      if (!(await isManagementUser(credential.user))) {
+        await signOut(firebaseAuth);
+        clearStaffAuthToken();
+        const error = new Error('This email belongs to a tourist account. Use the tourist portal.') as Error & { code?: string };
+        error.code = 'auth/permission-denied';
+        throw error;
+      }
       const token = await credential.user.getIdToken();
       setStaffAuthToken(token);
     },

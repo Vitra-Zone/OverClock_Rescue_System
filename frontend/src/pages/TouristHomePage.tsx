@@ -22,6 +22,7 @@ function getAuthErrorMessage(error: unknown, mode: 'login' | 'register'): string
     'auth/weak-password': 'Password must be at least 6 characters.',
     'auth/email-already-in-use': 'This email is already registered. Please log in instead.',
     'auth/user-not-found': 'No account found for this email. Please register first.',
+    'auth/permission-denied': 'This email belongs to a management account. Use the staff login portal.',
     'auth/wrong-password': 'Incorrect password. Please try again.',
     'auth/invalid-credential': 'Invalid email or password.',
     'auth/operation-not-allowed': 'Email/password sign-in is disabled in Firebase Auth. Enable it in the Firebase console.',
