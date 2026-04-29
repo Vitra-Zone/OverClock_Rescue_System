@@ -33,8 +33,8 @@ export function HotelTouristRegistrationPage() {
   const [linkedTourists, setLinkedTourists] = useState<TouristProfile[]>([]);
   const [loadingLinked, setLoadingLinked] = useState(false);
 
-  const hotelName = (import.meta.env.VITE_HOTEL_NAME?.trim() ?? 'OverClock Partner Hotel');
-  const hotelLocation = (import.meta.env.VITE_HOTEL_LOCATION?.trim() ?? 'Kolkata');
+  const hotelName = (import.meta.env.VITE_HOTEL_NAME?.trim() ?? 'OverClock Tower');
+  const hotelLocation = (import.meta.env.VITE_HOTEL_LOCATION?.trim() ?? 'Assam, Guwahati');
   const hotelPhoneNumber = (import.meta.env.VITE_HOTEL_PHONE?.trim() ?? '+91-XXXXXXXXXX');
   const nightsOfStay = calculateNights(startDate, endDate);
 

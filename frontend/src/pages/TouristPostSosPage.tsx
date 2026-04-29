@@ -217,7 +217,8 @@ export function TouristPostSosPage() {
                 <div className="flex items-center gap-2 text-crisis-text font-semibold">
                   <ArrowLeft size={18} className="text-crisis-primary" /> Hotel details
                 </div>
-                <p className="text-crisis-text-dim text-sm">{profile?.hotelBinding?.hotelLocation ?? incident.hotelContext?.address ?? 'Hotel location unavailable'}</p>
+                <p className="text-crisis-text font-semibold">{profile?.hotelBinding?.hotelName ?? incident.hotelContext?.name ?? 'OverClock Tower'}</p>
+                <p className="text-crisis-text-dim text-sm">{profile?.hotelBinding?.hotelLocation ?? incident.hotelContext?.address ?? 'Assam, Guwahati'}</p>
                 <p className="text-crisis-text-dim text-sm">Room number: <span className="text-crisis-text font-semibold">{profile?.hotelBinding?.roomNumber ?? incident.roomNumber}</span></p>
                 <p className="text-crisis-text-dim text-sm">Emergency line: <span className="text-crisis-text font-semibold">{callNumber}</span></p>
               </div>

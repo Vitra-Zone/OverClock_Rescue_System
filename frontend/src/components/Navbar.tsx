@@ -38,8 +38,20 @@ export function Navbar({ connectivity, onModeChange }: Props) {
   const showConnectivity = isTouristRoute;
   const showTouristActions = isTouristRoute && pathname !== '/tourist-home' && !pathname.startsWith('/post-sos') && Boolean(touristUser);
   const showTouristEdit = showTouristActions && Boolean(touristProfile);
-  const showStaffLogout = isManagementRoute && enabled && Boolean(user);
   const showTouristLogout = showTouristActions;
+  const showStaffLogout = isManagementRoute && enabled && Boolean(user) && pathname !== '/management';
+
+  const handleLogoClick = async () => {
+    if (touristUser) {
+      await logoutTourist();
+    }
+
+    if (user) {
+      await logoutStaff();
+    }
+
+    navigate('/');
+  };
 
   React.useEffect(() => {
     setTouristMenuOpen(false);
@@ -48,7 +60,7 @@ export function Navbar({ connectivity, onModeChange }: Props) {
   return (
     <header className="sticky top-0 z-50 bg-crisis-surface/80 backdrop-blur-md border-b border-crisis-border">
       <div className="max-w-6xl mx-auto px-4 h-14 flex items-center justify-center relative">
-        <button onClick={() => navigate(isManagementRoute ? '/management' : isTouristRoute ? '/tourist-home' : '/')} className="absolute left-4 flex items-center gap-2 shrink-0">
+        <button onClick={() => { void handleLogoClick(); }} className="absolute left-4 flex items-center gap-2 shrink-0">
           <img src="/rescue-overclock-logo.png" alt="Rescue OverClock" className="w-8 h-8" />
           <span className="font-bold text-crisis-text text-sm hidden sm:block">Rescue OverClock</span>
         </button>
@@ -143,13 +155,14 @@ export function Navbar({ connectivity, onModeChange }: Props) {
           <button
             onClick={async () => {
               await logoutStaff();
-              navigate('/');
+              navigate('/management');
             }}
             className="btn-ghost text-xs inline-flex items-center gap-1 ml-auto"
           >
             <LogOut size={14} /> Logout
           </button>
         )}
+
       </div>
     </header>
   );

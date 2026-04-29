@@ -4,6 +4,7 @@ import cors from 'cors';
 import incidentRoutes from './routes/incidents';
 import aiRoutes from './routes/ai';
 import fallbackRoutes from './routes/fallback';
+import webhookRoutes from './routes/webhooks';
 import notificationRoutes from './routes/notifications';
 import touristRoutes from './routes/tourists';
 import { isFirebaseEnabled } from './services/firebaseAdmin';
@@ -40,6 +41,7 @@ app.use(cors({
   allowedHeaders: ['Content-Type', 'Authorization'],
 }));
 app.use(express.json());
+app.use(express.urlencoded({ extended: false }));
 
 // Request logger
 app.use((req, _res, next) => {
@@ -83,6 +85,7 @@ app.get('/health', (_req, res) => {
 app.use('/api/incidents', incidentRoutes);
 app.use('/api/ai', aiRoutes);
 app.use('/api/fallback', fallbackRoutes);
+app.use('/api/webhooks', webhookRoutes);
 app.use('/api/notifications', notificationRoutes);
 app.use('/api/tourists', touristRoutes);
 

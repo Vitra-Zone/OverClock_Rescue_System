@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { MapPin, User, MessageSquare, ArrowLeft, CheckCircle, AlertTriangle } from 'lucide-react';
 import type { ConnectivityMode, Incident, Coordinates } from '../types/incident';
@@ -19,11 +19,11 @@ const GUEST_BOUND_HOTEL_CONTEXT_KEY = 'hackdays_guest_bound_hotel_context';
 const GUEST_QR_PREFILL_STORAGE_KEY = 'hackdays_guest_qr_prefill';
 
 const DEFAULT_BOUND_HOTEL_CONTEXT = {
-  name: 'Rescue OverClock Partner Hotel',
-  address: 'City Center, Main Road, India',
+  name: 'OverClock Tower',
+  address: 'Assam, Guwahati',
   coordinates: {
-    lat: 28.6139,
-    lng: 77.209,
+    lat: 26.1445,
+    lng: 91.7362,
   },
 };
 
@@ -40,6 +40,46 @@ const HOTEL_LOCATIONS = [
 
 const HOTEL_EMERGENCY_TYPES = ['Fire', 'Health', 'Medical', 'Electrical', 'Security Threat', 'Anything Else'];
 const OTHER_EMERGENCY_TYPES = ['Theft', 'Murder', 'Assault', 'Harassment', 'Suspicious Activity', 'Other'];
+const DEFAULT_SMS_NUMBER = import.meta.env.VITE_TWILIO_SMS_NUMBER?.trim() ?? '+91XXXXXXXXXX';
+
+function compactSmsValue(value: string) {
+  return value.replace(/[|]/g, '/').replace(/\s+/g, ' ').trim();
+}
+
+function buildSmsFallbackPayload(input: {
+  guestName: string;
+  roomNumber: string;
+  location: string;
+  emergencyType: string;
+  details: string;
+  hotelName: string;
+  hotelAddress: string;
+  coordinates?: Coordinates;
+  scope: 'in_hotel' | 'outside';
+}) {
+  const parts = [
+    'OCSOS',
+    `n=${compactSmsValue(input.guestName)}`,
+    `r=${compactSmsValue(input.roomNumber)}`,
+    `loc=${compactSmsValue(input.location)}`,
+    `t=${compactSmsValue(input.emergencyType)}`,
+    `d=${compactSmsValue(input.details || 'No additional details')}`,
+    `h=${compactSmsValue(input.hotelName)}`,
+    `a=${compactSmsValue(input.hotelAddress)}`,
+    `s=${input.scope === 'outside' ? 'o' : 'i'}`,
+  ];
+
+  if (input.coordinates) {
+    parts.push(`c=${input.coordinates.lat},${input.coordinates.lng}`);
+  }
+
+  return parts.join('|');
+}
+
+function buildSmsUri(number: string, body: string) {
+  const normalizedNumber = number.replace(/[^+\d]/g, '');
+  return `sms:${normalizedNumber}?body=${encodeURIComponent(body)}`;
+}
 
 export function SOSScreen({ connectivity, showBackButton = true, afterSubmitFlow = 'incident' }: Props) {
   const navigate = useNavigate();
@@ -59,9 +99,32 @@ export function SOSScreen({ connectivity, showBackButton = true, afterSubmitFlow
   });
   const [coordinates, setCoordinates] = useState<Coordinates | undefined>(undefined);
   const [boundHotelContext, setBoundHotelContext] = useState(DEFAULT_BOUND_HOTEL_CONTEXT);
+  const [smsDraft, setSmsDraft] = useState('');
+  const [smsError, setSmsError] = useState<string | null>(null);
   const [locating, setLocating] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const hasHotelBinding = Boolean(profile?.hotelBinding);
+  const smsRecipientNumber = profile?.hotelBinding?.hotelPhoneNumber ?? DEFAULT_SMS_NUMBER;
+
+  const smsFallbackPayload = useMemo(() => buildSmsFallbackPayload({
+    guestName: form.guestName || profile?.touristFirstName || 'Guest',
+    roomNumber: hasHotelBinding && profile?.hotelBinding
+      ? profile.hotelBinding.roomNumber
+      : form.roomNumber || 'Unknown',
+    location: form.locationMode === 'hotel'
+      ? hasHotelBinding && profile?.hotelBinding
+        ? `${profile.hotelBinding.hotelLocation}, Room ${profile.hotelBinding.roomNumber}`
+        : form.hotelLocation === 'Room'
+          ? `Room ${form.roomNumber || 'Unknown'}`
+          : form.hotelLocation
+      : form.otherLocation || 'Unknown',
+    emergencyType: form.emergencyType,
+    details: form.details,
+    hotelName: boundHotelContext.name,
+    hotelAddress: boundHotelContext.address,
+    coordinates,
+    scope: form.locationMode === 'hotel' ? 'in_hotel' : 'outside',
+  }), [boundHotelContext.address, boundHotelContext.name, coordinates, form.details, form.emergencyType, form.guestName, form.hotelLocation, form.locationMode, form.otherLocation, form.roomNumber, hasHotelBinding, profile?.hotelBinding, profile?.touristFirstName]);
 
   useEffect(() => {
     if (afterSubmitFlow !== 'guides-map') return;
@@ -168,6 +231,8 @@ export function SOSScreen({ connectivity, showBackButton = true, afterSubmitFlow
     setIncident(null);
     setLiveVideoUrl(null);
     setFallbackStatus(null);
+    setSmsDraft('');
+    setSmsError(null);
     setCoordinates(undefined);
     setError(null);
     setForm({
@@ -346,6 +411,8 @@ export function SOSScreen({ connectivity, showBackButton = true, afterSubmitFlow
   }
 
   if (step === 'offline') {
+    const smsMessage = smsDraft || smsFallbackPayload;
+
     return (
       <div className="min-h-screen flex flex-col items-center justify-center p-6 text-center">
         <div className="card max-w-md w-full p-8 space-y-6">
@@ -354,15 +421,68 @@ export function SOSScreen({ connectivity, showBackButton = true, afterSubmitFlow
           </div>
           <div>
             <h2 className="text-2xl font-bold text-crisis-text mb-2">No Connection</h2>
-            <p className="text-crisis-text-dim">You're offline or the backend isn't reachable. Your SOS has been logged locally.</p>
+            <p className="text-crisis-text-dim">You're offline or the backend isn't reachable. Generate a compact SMS and send it through your messaging app.</p>
           </div>
-          <div className="space-y-3">
+          <div className="space-y-3 text-left">
             <button id="sos-offline-guides-btn" onClick={() => navigate('/offline')} className="btn-primary w-full">
               View Emergency Guides
             </button>
             <button id="sos-fallback-btn" onClick={() => navigate('/fallback')} className="btn-secondary w-full">
               SMS / Voice Fallback
             </button>
+            <div className="rounded-2xl border border-crisis-border/60 bg-crisis-bg/70 p-4 space-y-3">
+              <div>
+                <p className="text-xs uppercase tracking-[0.2em] text-crisis-muted mb-1">SMS fallback</p>
+                <p className="text-sm text-crisis-text-dim">Send this to the hotel number via your phone's messaging app. Twilio can pick it up and create the incident in the hotel dashboard.</p>
+              </div>
+              <button
+                id="sos-generate-sms-btn"
+                onClick={() => {
+                  setSmsError(null);
+                  setSmsDraft(smsFallbackPayload);
+                }}
+                className="btn-ghost w-full"
+              >
+                Generate SMS message
+              </button>
+              <textarea
+                readOnly
+                value={smsMessage}
+                className="form-input min-h-[120px] font-mono text-xs leading-relaxed resize-none"
+              />
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                <button
+                  id="sos-open-sms-app-btn"
+                  onClick={() => {
+                    const payload = smsMessage || smsFallbackPayload;
+                    if (!payload) {
+                      setSmsError('Generate the SMS message first.');
+                      return;
+                    }
+                    window.location.href = buildSmsUri(smsRecipientNumber, payload);
+                  }}
+                  className="btn-primary w-full"
+                >
+                  Open messaging app
+                </button>
+                <button
+                  id="sos-copy-sms-btn"
+                  onClick={async () => {
+                    try {
+                      await navigator.clipboard.writeText(smsMessage || smsFallbackPayload);
+                      setSmsError(null);
+                    } catch {
+                      setSmsError('Could not copy the SMS text.');
+                    }
+                  }}
+                  className="btn-secondary w-full"
+                >
+                  Copy SMS text
+                </button>
+              </div>
+              <p className="text-xs text-crisis-text-dim">To: {smsRecipientNumber}</p>
+              {smsError && <p className="text-xs text-amber-300">{smsError}</p>}
+            </div>
             <div className="text-crisis-accent font-bold text-lg">📞 Emergency: 112</div>
           </div>
         </div>

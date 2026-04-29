@@ -72,10 +72,11 @@ const DEFAULT_COORDS: Coordinates = { lat: 28.6139, lng: 77.209 };
 
 export function TouristPortalPage() {
   const navigate = useNavigate();
-  const { profile, loading, refreshProfile } = useTouristAuth();
+  const { user, profile, loading, refreshProfile } = useTouristAuth();
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
   const frameRef = useRef<number | null>(null);
+  const profileRetryRef = useRef(false);
   const [currentCoords, setCurrentCoords] = useState<Coordinates>(profile?.coordinates ?? DEFAULT_COORDS);
   const [locationLabel, setLocationLabel] = useState(profile?.currentLocation ?? 'Waiting for location');
   const [scannerOpen, setScannerOpen] = useState(false);
@@ -95,6 +96,14 @@ export function TouristPortalPage() {
       setLocationLabel(profile.currentLocation);
     }
   }, [profile]);
+
+  useEffect(() => {
+    if (loading || !user || profile || profileRetryRef.current) return;
+    profileRetryRef.current = true;
+    void refreshProfile().catch(() => {
+      // Keep the page usable even if the backend/profile endpoint is slow.
+    });
+  }, [loading, profile, refreshProfile, user]);
 
   const stopScanner = () => {
     if (frameRef.current) {
@@ -219,6 +228,11 @@ export function TouristPortalPage() {
   return (
     <div className="min-h-screen px-3 py-4 sm:px-4 sm:py-6 pb-28">
       <div className="max-w-3xl mx-auto space-y-4 sm:space-y-5">
+        {!loading && user && !profile && (
+          <div className="card border border-amber-700/40 bg-amber-950/20 p-4 text-sm text-amber-100">
+            Tourist profile data is not loaded yet. Refresh the page or sign in again if this keeps happening.
+          </div>
+        )}
         <section className="space-y-4 sm:space-y-5">
           <div className="card p-5 sm:p-6 space-y-4 sm:space-y-5">
             <div className="flex items-center justify-between gap-3 flex-wrap">

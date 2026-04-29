@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { LayoutDashboard, RefreshCw, AlertTriangle, CheckCircle, Clock, Loader2 } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { ArrowLeft, LayoutDashboard, RefreshCw, AlertTriangle, CheckCircle, Clock, Loader2 } from 'lucide-react';
 import type { IncidentStatus } from '../types/incident';
 import { fetchIncidents, registerNotificationToken } from '../api/client';
 import { IncidentCard } from '../components/IncidentCard';
@@ -32,6 +33,7 @@ function parseRole(raw: string | null): ManagementRole {
 }
 
 export function StaffDashboard() {
+  const navigate = useNavigate();
   const { incidents, loading, error } = useRealtimeIncidents();
   const { user } = useAuth();
   const [filter, setFilter] = useState<IncidentStatus>('open');
@@ -101,13 +103,22 @@ export function StaffDashboard() {
       <div className="max-w-4xl mx-auto space-y-6">
         {/* Header */}
         <div className="flex items-center justify-between mb-8">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-crisis-primary/20 flex items-center justify-center">
-              <LayoutDashboard size={20} className="text-crisis-primary" />
-            </div>
-            <div>
-              <h1 className="text-2xl font-black text-crisis-text">{roleTitle}</h1>
-              <p className="text-crisis-text-dim text-sm">{roleSubtitle}</p>
+          <div className="flex items-center gap-3 flex-wrap">
+            <button
+              type="button"
+              onClick={() => navigate('/management')}
+              className="btn-ghost inline-flex items-center gap-2 text-xs"
+            >
+              <ArrowLeft size={14} /> Back
+            </button>
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-crisis-primary/20 flex items-center justify-center">
+                <LayoutDashboard size={20} className="text-crisis-primary" />
+              </div>
+              <div>
+                <h1 className="text-2xl font-black text-crisis-text">{roleTitle}</h1>
+                <p className="text-crisis-text-dim text-sm">{roleSubtitle}</p>
+              </div>
             </div>
           </div>
           <div className="flex items-center gap-3">

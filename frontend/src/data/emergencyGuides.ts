@@ -75,8 +75,8 @@ export const EMERGENCY_GUIDES = [
 ];
 
 export const HOTEL_SAFETY_INFO = {
-  name: 'Grand Hospitality Hotel',
-  address: '42, Marine Drive, Mumbai, India',
+  name: 'OverClock Tower',
+  address: 'Assam, Guwahati',
   phone: '+91-22-0000-0000',
   emergencyLine: '+91-22-0000-0001',
   exits: [
