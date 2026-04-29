@@ -88,10 +88,11 @@ Render blueprint is included in `render.yaml`.
 
 Backend deployment flow:
 1. Create a Render Web Service from `render.yaml` or import the repo.
-2. Set `FIREBASE_SERVICE_ACCOUNT_JSON` in Render as a secret env var.
-3. Set `CORS_ORIGINS` to your Firebase Hosting domains, for example `https://your-project.web.app,https://your-project.firebaseapp.com`.
-4. Keep `GEMINI_API_KEY` empty if you want the local rule-based AI fallback.
-5. Deploy with the default build and start commands from the blueprint.
+2. The backend package now keeps `typescript` and the `@types/*` packages in normal dependencies so Render can compile even if dev deps are skipped.
+3. Set `FIREBASE_SERVICE_ACCOUNT_JSON` in Render as a secret env var.
+4. Set `CORS_ORIGINS` to your Firebase Hosting domains, for example `https://your-project.web.app,https://your-project.firebaseapp.com`.
+5. Keep `GEMINI_API_KEY` empty if you want the local rule-based AI fallback.
+6. Deploy with the default build and start commands from the blueprint.
 
 Frontend deployment flow:
 1. Set `VITE_BACKEND_URL` to your Render backend URL before building.
