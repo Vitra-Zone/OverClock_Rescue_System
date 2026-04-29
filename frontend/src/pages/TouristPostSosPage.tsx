@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { ArrowLeft, PhoneCall, Video, WifiOff, ShieldAlert, RotateCcw } from 'lucide-react';
-import { fetchIncident, notifyTouristContact, triggerFallback } from '../api/client';
+import { fetchTouristIncidents, notifyTouristContact, triggerFallback } from '../api/client';
 import { useTouristAuth } from '../auth/TouristAuthContext';
 import type { Incident } from '../types/incident';
 import { TouristIncidentMap } from '../components/TouristIncidentMap';
@@ -9,9 +9,25 @@ import { TimelinePanel } from '../components/TimelinePanel';
 import { TouristChatBox } from '../components/TouristChatBox';
 
 const LAST_INCIDENT_KEY = 'hackdays_tourist_last_incident';
+const LAST_INCIDENT_SNAPSHOT_KEY = 'hackdays_tourist_last_incident_snapshot';
 
 function storeIncidentId(incident: Incident) {
   window.sessionStorage.setItem(LAST_INCIDENT_KEY, JSON.stringify({ incidentId: incident.id }));
+}
+
+function storeIncidentSnapshot(incident: Incident) {
+  window.sessionStorage.setItem(LAST_INCIDENT_SNAPSHOT_KEY, JSON.stringify(incident));
+  storeIncidentId(incident);
+}
+
+function readIncidentSnapshot(): Incident | null {
+  try {
+    const raw = window.sessionStorage.getItem(LAST_INCIDENT_SNAPSHOT_KEY);
+    if (!raw) return null;
+    return JSON.parse(raw) as Incident;
+  } catch {
+    return null;
+  }
 }
 
 export function TouristPostSosPage() {
@@ -37,13 +53,27 @@ export function TouristPostSosPage() {
         })();
 
         if (!candidateId) {
-          setIncident(null);
+          setIncident(readIncidentSnapshot());
           return;
         }
 
-        const nextIncident = await fetchIncident(candidateId);
+        const cachedIncident = readIncidentSnapshot();
+        if (cachedIncident?.id === candidateId) {
+          setIncident(cachedIncident);
+          return;
+        }
+
+        const incidents = await fetchTouristIncidents();
+        const nextIncident = incidents.find((entry) => entry.id === candidateId) ?? null;
+        if (!nextIncident) {
+          setIncident(cachedIncident?.id === candidateId ? cachedIncident : null);
+          return;
+        }
         setIncident(nextIncident);
-        storeIncidentId(nextIncident);
+        storeIncidentSnapshot(nextIncident);
+      } catch (error) {
+        console.error('[TouristPostSosPage] Failed to load incident', error);
+        setIncident(readIncidentSnapshot());
       } finally {
         setLoading(false);
       }
@@ -52,26 +82,19 @@ export function TouristPostSosPage() {
     void load();
   }, [incidentId]);
 
-  useEffect(() => {
-    const timer = window.setInterval(async () => {
-      if (!incident?.id) return;
-      try {
-        const nextIncident = await fetchIncident(incident.id);
-        setIncident(nextIncident);
-      } catch {
-        // keep cached data
-      }
-    }, 15000);
-
-    return () => window.clearInterval(timer);
-  }, [incident?.id]);
-
   const incidentContext = useMemo(() => ({
     incidentId: incident?.id,
-    incidentType: incident?.incidentType,
-    severity: incident?.severity,
+    incidentType: incident?.aiTriage?.incidentType ?? incident?.incidentType,
+    severity: incident?.aiTriage?.severity ?? incident?.severity,
     location: incident?.location,
     status: incident?.status,
+    message: incident?.message,
+    roomNumber: incident?.roomNumber,
+    incidentScope: incident?.incidentScope,
+    hotelName: incident?.hotelContext?.name,
+    hotelAddress: incident?.hotelContext?.address,
+    recommendedAction: incident?.recommendedAction,
+    aiSummary: incident?.aiSummary,
   }), [incident]);
 
   if (loading) {
@@ -190,7 +213,16 @@ export function TouristPostSosPage() {
               <div className="flex flex-wrap gap-3">
                 <button onClick={() => navigate('/offline', { state: { emergencyType: incident.incidentType } })} className="btn-secondary">Open offline guide</button>
                 <button onClick={() => navigate('/live-guidance', { state: { incidentId: incident.id, liveVideoUrl: videoUrl } })} className="btn-secondary">Open live guidance</button>
-                <button onClick={() => navigate('/sos')} className="btn-primary">New SOS</button>
+                <button
+                  onClick={() => {
+                    window.sessionStorage.removeItem(LAST_INCIDENT_KEY);
+                    window.sessionStorage.removeItem(LAST_INCIDENT_SNAPSHOT_KEY);
+                    navigate('/sos');
+                  }}
+                  className="btn-primary"
+                >
+                  New SOS
+                </button>
               </div>
             </div>
 

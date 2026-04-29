@@ -12,17 +12,76 @@ console.log(geminiEnabled
   ? `[AIService] Gemini mode enabled (${geminiModel}) with local fallback.`
   : '[AIService] Running in local rule-based triage mode.');
 
-// Keywords for rule-based classification
+// Keywords for rule-based classification.
+// Security/violence is evaluated ahead of medical so assault/harassment does not get mislabeled as medical.
 const INCIDENT_KEYWORDS: Record<IncidentType, string[]> = {
-  medical: ['chest', 'pain', 'breathe', 'breathing', 'heart', 'faint', 'unconscious', 'blood', 'hurt', 'injury', 'injured', 'sick', 'medical', 'health', 'emergency', 'fell', 'fall', 'seizure', 'allergic'],
+  medical: [
+    'chest pain',
+    'cannot breathe',
+    'can\'t breathe',
+    'breathing',
+    'breathe',
+    'heart',
+    'faint',
+    'unconscious',
+    'medical',
+    'health',
+    'seizure',
+    'allergic',
+    'allergy',
+    'ill',
+    'sick',
+    'vomit',
+    'vomiting',
+    'fever',
+  ],
   fire: ['fire', 'smoke', 'burn', 'flame', 'hot', 'smell', 'burning', 'alarm', 'electrical', 'short circuit', 'spark', 'gas leak'],
-  security: ['threat', 'security threat', 'suspicious', 'unsafe', 'robbery', 'theft', 'stolen', 'violence', 'attack', 'dangerous', 'intruder', 'weapon'],
+  security: [
+    'assault',
+    'harassment',
+    'harass',
+    'abuse',
+    'attack',
+    'attacked',
+    'violence',
+    'violent',
+    'fight',
+    'beating',
+    'beat up',
+    'robbery',
+    'theft',
+    'stolen',
+    'stole',
+    'intruder',
+    'intrusion',
+    'weapon',
+    'threat',
+    'security threat',
+    'unsafe',
+    'dangerous',
+    'kidnap',
+    'kidnapping',
+    'molest',
+    'molestation',
+    'stalk',
+    'stalking',
+  ],
   earthquake: ['earthquake', 'shaking', 'tremor', 'quake', 'rumbling'],
   flood: ['flood', 'water', 'leak', 'pipe', 'overflow', 'submerged'],
   likely_fake: ['test', 'testing', 'prank', 'joke', 'fake', 'just kidding'],
   general: ['help', 'assist', 'issue', 'problem', 'stuck'],
   unknown: [],
 };
+
+const INCIDENT_CLASSIFICATION_ORDER: IncidentType[] = [
+  'fire',
+  'security',
+  'earthquake',
+  'flood',
+  'medical',
+  'likely_fake',
+  'general',
+];
 
 const SEVERITY_KEYWORDS: Record<Severity, string[]> = {
   critical: ['cannot breathe', 'unconscious', 'fire', 'weapon', 'gun', 'knife', 'explosion', 'chest pain', 'not breathing', 'critical', 'severe'],
@@ -86,11 +145,19 @@ function isLikelyNonEmergency(message: string): boolean {
 
 function classifyIncident(message: string): IncidentType {
   const lower = message.toLowerCase();
-  for (const [type, keywords] of Object.entries(INCIDENT_KEYWORDS) as [IncidentType, string[]][]) {
-    if (type === 'unknown') continue;
-    if (keywords.some((kw) => lower.includes(kw))) return type;
+  let bestType: IncidentType = 'general';
+  let bestScore = 0;
+
+  for (const type of INCIDENT_CLASSIFICATION_ORDER) {
+    const keywords = INCIDENT_KEYWORDS[type];
+    const score = countKeywordHits(lower, keywords);
+    if (score > bestScore) {
+      bestType = type;
+      bestScore = score;
+    }
   }
-  return 'general';
+
+  return bestScore > 0 ? bestType : 'general';
 }
 
 function scoreSeverity(message: string, type: IncidentType): Severity {
@@ -389,6 +456,8 @@ export async function triageIncident(message: string, location: string): Promise
   const fallback = ruleBasedTriage(message, location);
   if (!geminiEnabled) return fallback;
 
+  const safetyType = classifyIncident(message);
+
   const prompt = [
     'Return JSON with keys: incidentType, severity, assignedTo, nextAction, fallbackMode, summary, followUpQuestion.',
     'Allowed incidentType: medical, fire, security, earthquake, flood, likely_fake, general, unknown.',
@@ -403,8 +472,9 @@ export async function triageIncident(message: string, location: string): Promise
   if (!ai) return fallback;
 
   const incidentType = normalizeIncidentType(typeof ai.incidentType === 'string' ? ai.incidentType : undefined);
+  const resolvedIncidentType = safetyType !== 'general' ? safetyType : incidentType;
   const severity = normalizeSeverity(typeof ai.severity === 'string' ? ai.severity : undefined);
-  const assignedTo = normalizeAssignedRole(typeof ai.assignedTo === 'string' ? ai.assignedTo : undefined, incidentType);
+  const assignedTo = normalizeAssignedRole(typeof ai.assignedTo === 'string' ? ai.assignedTo : undefined, resolvedIncidentType);
   const fallbackMode = normalizeFallbackMode(typeof ai.fallbackMode === 'string' ? ai.fallbackMode : undefined);
   const summary = typeof ai.summary === 'string' && ai.summary.trim()
     ? ai.summary.trim()
@@ -414,12 +484,12 @@ export async function triageIncident(message: string, location: string): Promise
     : fallback.followUpQuestion;
   const nextAction = typeof ai.nextAction === 'string' && ai.nextAction.trim()
     ? ai.nextAction.trim().toLowerCase().replace(/\s+/g, '_')
-    : fallback.nextAction;
+    : recommendNextAction(resolvedIncidentType, severity);
   const confidence = typeof ai.confidence === 'number' && Number.isFinite(ai.confidence)
     ? Math.max(0, Math.min(100, ai.confidence))
     : fallback.confidence;
   const workflowStage = typeof ai.workflowStage === 'string'
-    ? buildWorkflowStage(incidentType, nextAction)
+    ? buildWorkflowStage(resolvedIncidentType, nextAction)
     : fallback.workflowStage;
   const workflowSteps = Array.isArray(ai.workflowSteps) && ai.workflowSteps.every((item) => typeof item === 'string')
     ? ai.workflowSteps.map((item) => item.trim()).filter(Boolean)
@@ -442,7 +512,7 @@ export async function triageIncident(message: string, location: string): Promise
     : fallback.analytics;
 
   const fireSignalDetected = hasFireSignal(message);
-  if (fireSignalDetected && incidentType !== 'fire') {
+  if (fireSignalDetected && resolvedIncidentType !== 'fire') {
     return {
       ...fallback,
       incidentType: 'fire',
@@ -463,7 +533,7 @@ export async function triageIncident(message: string, location: string): Promise
   }
 
   return {
-    incidentType,
+    incidentType: resolvedIncidentType,
     severity,
     assignedTo,
     nextAction,
@@ -583,6 +653,8 @@ export async function generateTouristGuidanceReply(
     'Return STRICT JSON with keys: reply, actionItems.',
     'Reply should be short, practical, and reassuring.',
     'Action items should be an array of 2 to 4 short imperative sentences.',
+    'If the incident context indicates assault, harassment, theft, violence, or security threat, prioritize immediate personal safety, hotel security, and emergency escalation.',
+    'Do not mention medical guidance unless the context clearly indicates a medical issue.',
     `Tourist profile: ${JSON.stringify(profile ?? null)}`,
     `Incident context: ${JSON.stringify(incidentContext ?? null)}`,
     `Tourist message: ${message}`,

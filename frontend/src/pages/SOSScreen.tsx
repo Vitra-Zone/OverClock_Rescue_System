@@ -43,7 +43,7 @@ const OTHER_EMERGENCY_TYPES = ['Theft', 'Murder', 'Assault', 'Harassment', 'Susp
 
 export function SOSScreen({ connectivity, showBackButton = true, afterSubmitFlow = 'incident' }: Props) {
   const navigate = useNavigate();
-  const { profile } = useTouristAuth();
+  const { profile, loading: touristAuthLoading } = useTouristAuth();
   const [step, setStep] = useState<Step>('form');
   const [incident, setIncident] = useState<Incident | null>(null);
   const [liveVideoUrl, setLiveVideoUrl] = useState<string | null>(null);
@@ -125,6 +125,8 @@ export function SOSScreen({ connectivity, showBackButton = true, afterSubmitFlow
     }
   }, []);
 
+  
+
   useEffect(() => {
     if (!profile) return;
 
@@ -180,11 +182,23 @@ export function SOSScreen({ connectivity, showBackButton = true, afterSubmitFlow
     setStep('form');
   };
 
+  // If user isn't bound to a hotel, auto-switch to 'other' and attempt to capture geolocation once.
+  useEffect(() => {
+    if (hasHotelBinding) return;
+    if (form.otherLocation) return; // already have a detected location
+    setForm((f) => ({ ...f, locationMode: 'other', emergencyType: OTHER_EMERGENCY_TYPES[0] }));
+    void useCurrentLocation();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [hasHotelBinding]);
+
+
+  
+
   const updateForm = (field: string, value: string) => {
     setForm((f) => ({ ...f, [field]: value }));
   };
 
-  const useCurrentLocation = () => {
+  function useCurrentLocation() {
     if (!navigator.geolocation) {
       setError('Geolocation is not supported in this browser.');
       return;
@@ -211,7 +225,7 @@ export function SOSScreen({ connectivity, showBackButton = true, afterSubmitFlow
       },
       { enableHighAccuracy: true, timeout: 10000 }
     );
-  };
+  }
 
   const handleSOS = async () => {
     const isHotelMode = form.locationMode === 'hotel';
@@ -314,6 +328,18 @@ export function SOSScreen({ connectivity, showBackButton = true, afterSubmitFlow
       setStep('offline');
     }
   };
+
+  if (touristAuthLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center px-4 py-8">
+        <div className="card max-w-md w-full p-8 text-center space-y-4">
+          <div className="mx-auto h-12 w-12 rounded-full border-4 border-crisis-primary/25 border-t-crisis-primary animate-spin" />
+          <p className="text-crisis-text font-semibold">Restoring your SOS form...</p>
+          <p className="text-crisis-text-dim text-sm">Loading your tourist profile and hotel details.</p>
+        </div>
+      </div>
+    );
+  }
 
   if (step === 'offline') {
     return (
@@ -471,39 +497,30 @@ export function SOSScreen({ connectivity, showBackButton = true, afterSubmitFlow
             />
           </div>
 
-          {!hasHotelBinding && (
-            <div>
-              <label className="form-label" htmlFor="sos-location-mode">Location Type *</label>
-              <select
-                id="sos-location-mode"
-                className="form-input"
-                value={form.locationMode}
-                onChange={(e) => {
-                  const nextMode = e.target.value;
-                  setForm((f) => ({
-                    ...f,
-                    locationMode: nextMode,
-                    emergencyType: nextMode === 'hotel' ? HOTEL_EMERGENCY_TYPES[0] : OTHER_EMERGENCY_TYPES[0],
-                  }));
-                  if (nextMode === 'other') {
-                    void Promise.resolve().then(() => useCurrentLocation());
-                  }
-                }}
-              >
-                <option value="hotel">Hotel</option>
-                <option value="other">Other</option>
-              </select>
-            </div>
-          )}
+          <div>
+            <label className="form-label" htmlFor="sos-location-mode">Location Type *</label>
+            <select
+              id="sos-location-mode"
+              className="form-input"
+              value={form.locationMode}
+              onChange={(e) => {
+                const nextMode = e.target.value;
+                setForm((f) => ({
+                  ...f,
+                  locationMode: nextMode,
+                  emergencyType: nextMode === 'hotel' ? HOTEL_EMERGENCY_TYPES[0] : OTHER_EMERGENCY_TYPES[0],
+                }));
+                if (nextMode === 'other') {
+                  void Promise.resolve().then(() => useCurrentLocation());
+                }
+              }}
+            >
+              <option value="hotel">Hotel</option>
+              <option value="other">Other</option>
+            </select>
+          </div>
 
-          {hasHotelBinding ? (
-            <div className="rounded-2xl border border-emerald-700/35 bg-emerald-950/20 p-4 text-sm text-emerald-100 space-y-2">
-              <p className="font-semibold text-emerald-300">Hotel details captured automatically</p>
-              <p>Room: {profile?.hotelBinding?.roomNumber}</p>
-              <p>Location: {profile?.hotelBinding?.hotelLocation}</p>
-              <p className="text-emerald-200/70">These values are shared with the incident record but are hidden from the form.</p>
-            </div>
-          ) : form.locationMode === 'hotel' ? (
+          {form.locationMode === 'hotel' ? (
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <label className="form-label" htmlFor="sos-hotel-location">Location *</label>
@@ -527,9 +544,9 @@ export function SOSScreen({ connectivity, showBackButton = true, afterSubmitFlow
                   type="text"
                   className="form-input"
                   placeholder="e.g. 204"
-                  value={form.roomNumber}
+                  value={hasHotelBinding ? profile?.hotelBinding?.roomNumber ?? form.roomNumber : form.roomNumber}
                   onChange={(e) => updateForm('roomNumber', e.target.value)}
-                  disabled={form.hotelLocation !== 'Room'}
+                  disabled={form.hotelLocation !== 'Room' || hasHotelBinding}
                 />
               </div>
             </div>
