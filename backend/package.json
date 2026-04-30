@@ -1,7 +1,7 @@
 {
   "name": "hackdays-backend",
   "version": "1.0.0",
-  "description": "Hackdays Assist — Backend API Server",
+  "description": "OverClock Rescue — Backend API Server",
   "main": "dist/index.js",
   "scripts": {
     "dev": "ts-node-dev --respawn --transpile-only src/index.ts",

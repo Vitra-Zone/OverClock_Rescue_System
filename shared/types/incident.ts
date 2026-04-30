@@ -1,5 +1,5 @@
 // ============================================================
-// Hackdays Assist — Shared Types
+// OverClock Rescue — Shared Types
 // ============================================================
 
 export type IncidentType =

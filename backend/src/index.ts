@@ -53,7 +53,7 @@ app.use((req, _res, next) => {
 app.get('/', (_req, res) => {
   res.json({
     success: true,
-    service: 'Hackdays Assist API',
+    service: 'OverClock Rescue API',
     version: '1.0.0',
     status: 'running',
     endpoints: {
@@ -72,7 +72,7 @@ app.get('/', (_req, res) => {
 app.get('/health', (_req, res) => {
   res.json({
     status: 'ok',
-    service: 'Hackdays Assist API',
+    service: 'OverClock Rescue API',
     version: '1.0.0',
     timestamp: new Date().toISOString(),
     aiMode: 'rule_based',
@@ -104,7 +104,7 @@ app.use((err: Error, _req: express.Request, res: express.Response, _next: expres
 app.listen(PORT, () => {
   console.log('');
   console.log('╔══════════════════════════════════════════════╗');
-  console.log('║   🚨 Hackdays Assist — API Server         ║');
+  console.log('║   🚨 OverClock Rescue — API Server        ║');
   console.log(`║   Running at http://localhost:${PORT}            ║`);
   console.log('║   AI Mode: Rule-based Local                   ║');
   console.log('╚══════════════════════════════════════════════╝');

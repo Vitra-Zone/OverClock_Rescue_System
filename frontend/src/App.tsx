@@ -2,6 +2,7 @@ import React from 'react';
 import { BrowserRouter, Routes, Route, useLocation, useNavigate } from 'react-router-dom';
 import { ArrowLeft } from 'lucide-react';
 import { Navbar } from './components/Navbar';
+import { Footer } from './components/Footer';
 import { ProtectedStaffRoute } from './auth/ProtectedStaffRoute';
 import { TouristHomePage } from './pages/TouristHomePage';
 import { GuestPortalPage } from './pages/GuestPortalPage';
@@ -68,6 +69,7 @@ function AppRoutes() {
           <Route path="/dashboard/:id" element={<ProtectedStaffRoute><IncidentDetail /></ProtectedStaffRoute>} />
         </Routes>
       </main>
+      <Footer />
     </div>
   );
 }
